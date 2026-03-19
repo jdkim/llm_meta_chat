@@ -18,6 +18,7 @@
         <% if user_signed_in? %>
           <%= render "shared/tool_selector_field", stimulus_controller: "tool-selector" %>
         <% end %>
+        <%= render "shared/generation_settings_field", stimulus_controller: "generation-settings" %>
       <% end %>
       <div class="input-wrapper">
         <%= f.text_area :message,
@@ -63,4 +64,3 @@
     }
   });
 </script>
-

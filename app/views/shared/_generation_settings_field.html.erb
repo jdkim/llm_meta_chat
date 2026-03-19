@@ -1,0 +1,87 @@
+<%
+  stimulus_controller = local_assigns[:stimulus_controller] || "generation-settings"
+%>
+<div class="generation-settings-field" data-controller="<%= stimulus_controller %>">
+  <div class="generation-settings-toggle">
+    <button type="button"
+            class="generation-settings-toggle-button"
+            data-<%= stimulus_controller %>-target="toggleButton"
+            data-action="click-><%= stimulus_controller %>#toggle">
+      <i class="bi bi-sliders"></i>
+      Generation Settings
+      <i class="bi bi-chevron-down toggle-icon" data-<%= stimulus_controller %>-target="toggleIcon"></i>
+    </button>
+  </div>
+  <div class="generation-settings-panel" data-<%= stimulus_controller %>-target="panel" style="display: none;">
+    <div class="generation-setting-item">
+      <label for="temperature">
+        Temperature
+        <span class="setting-value" data-<%= stimulus_controller %>-target="temperatureValue">0.7</span>
+      </label>
+      <input type="range" name="temperature" id="temperature"
+             min="0" max="2" step="0.1" value="0.7"
+             data-<%= stimulus_controller %>-target="temperatureRange"
+             data-action="input-><%= stimulus_controller %>#updateTemperature">
+      <div class="setting-range-labels">
+        <span>0 (deterministic)</span>
+        <span>2 (creative)</span>
+      </div>
+    </div>
+
+    <div class="generation-setting-item">
+      <label for="top_k">
+        Top-K
+        <span class="setting-value" data-<%= stimulus_controller %>-target="topKValue">40</span>
+      </label>
+      <input type="range" name="top_k" id="top_k"
+             min="1" max="100" step="1" value="40"
+             data-<%= stimulus_controller %>-target="topKRange"
+             data-action="input-><%= stimulus_controller %>#updateTopK">
+      <div class="setting-range-labels">
+        <span>1 (focused)</span>
+        <span>100 (diverse)</span>
+      </div>
+    </div>
+
+    <div class="generation-setting-item">
+      <label for="top_p">
+        Top-P
+        <span class="setting-value" data-<%= stimulus_controller %>-target="topPValue">0.9</span>
+      </label>
+      <input type="range" name="top_p" id="top_p"
+             min="0" max="1" step="0.05" value="0.9"
+             data-<%= stimulus_controller %>-target="topPRange"
+             data-action="input-><%= stimulus_controller %>#updateTopP">
+      <div class="setting-range-labels">
+        <span>0 (narrow)</span>
+        <span>1 (broad)</span>
+      </div>
+    </div>
+
+    <div class="generation-setting-item">
+      <label for="max_tokens">
+        Max Tokens
+      </label>
+      <input type="number" name="max_tokens" id="max_tokens"
+             min="1" max="128000" step="1" value=""
+             placeholder="Default (model-dependent)"
+             class="max-tokens-input"
+             data-<%= stimulus_controller %>-target="maxTokensInput">
+    </div>
+
+    <div class="generation-setting-item">
+      <label for="repeat_penalty">
+        Repeat Penalty
+        <span class="setting-value" data-<%= stimulus_controller %>-target="repeatPenaltyValue">1.1</span>
+      </label>
+      <input type="range" name="repeat_penalty" id="repeat_penalty"
+             min="1" max="2" step="0.05" value="1.1"
+             data-<%= stimulus_controller %>-target="repeatPenaltyRange"
+             data-action="input-><%= stimulus_controller %>#updateRepeatPenalty">
+      <div class="setting-range-labels">
+        <span>1.0 (no penalty)</span>
+        <span>2.0 (strong)</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -82,7 +82,7 @@ class ChatsController < ApplicationController
 
       # Send to LLM and get assistant response
       begin
-        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param)
+        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param, generation_settings: generation_settings_param)
         # Generate chat title from the user's prompt (only if title is not yet set)
         @chat.generate_title(params[:message], jwt_token)
       rescue StandardError => e
@@ -172,7 +172,7 @@ class ChatsController < ApplicationController
 
       # Send to LLM and get assistant response
       begin
-        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param)
+        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param, generation_settings: generation_settings_param)
       rescue StandardError => e
         Rails.logger.error "Error in chat response: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
         @error_message = "An error occurred while getting the response. Please try again."
@@ -190,5 +190,15 @@ class ChatsController < ApplicationController
 
   def tool_ids_param
     params[:tool_ids].presence || []
+  end
+
+  def generation_settings_param
+    settings = {}
+    settings[:temperature] = params[:temperature].to_f if params[:temperature].present?
+    settings[:top_k] = params[:top_k].to_i if params[:top_k].present?
+    settings[:top_p] = params[:top_p].to_f if params[:top_p].present?
+    settings[:max_tokens] = params[:max_tokens].to_i if params[:max_tokens].present?
+    settings[:repeat_penalty] = params[:repeat_penalty].to_f if params[:repeat_penalty].present?
+    settings
   end
 end

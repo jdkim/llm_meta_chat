@@ -8,6 +8,14 @@ Bundler.require(*Rails.groups)
 
 module LlmMetaTestService
   class Application < Rails::Application
+    # Add asset paths for prompt_navigator gem
+    config.assets.paths << Rails.root.join("../prompt_navigator/app/assets/stylesheets")
+    # Add asset paths for chat_manager gem
+    config.assets.paths << Rails.root.join("../chat_manager/app/assets/stylesheets")
+    # Add asset paths for prompt_manager gem
+    config.assets.paths << Rails.root.join("../prompt_manager/app/assets/stylesheets")
+    # Add asset paths for chat_manager gem
+    config.assets.paths << Rails.root.join("../chat_manager/app/assets/stylesheets")
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 

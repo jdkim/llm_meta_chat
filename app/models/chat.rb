@@ -11,7 +11,7 @@ class Chat < ApplicationRecord
 
   # Find existing chat from session or create new one
   class << self
-    def find_or_switch_for_session(session, current_user, llm_uuid: llm_uuid, model: model)
+    def find_or_switch_for_session(session, current_user, llm_uuid: nil, model: nil)
       chat = find_by_session_chat_id(session, current_user)
       return chat if llm_uuid.nil? || model.nil?
 
@@ -67,8 +67,8 @@ class Chat < ApplicationRecord
   end
 
   # Add assistant response by sending to LLM
-  def add_assistant_response(prompt_execution, jwt_token, tool_ids: [])
-    response_content = send_to_llm(jwt_token, tool_ids: tool_ids)
+  def add_assistant_response(prompt_execution, jwt_token, tool_ids: [], generation_settings: {})
+    response_content = send_to_llm(jwt_token, tool_ids: tool_ids, generation_settings: generation_settings)
     prompt_execution.update!(
       llm_platform: llm_type(jwt_token),
       response: response_content
@@ -122,33 +122,29 @@ class Chat < ApplicationRecord
   end
 
   # Send messages to LLM and get response
-  def send_to_llm(jwt_token, tool_ids: [])
+  def send_to_llm(jwt_token, tool_ids: [], generation_settings: {})
     # Get LLM options
     llm_options = LlmMetaClient::ServerResource.available_llm_options(jwt_token)
 
     # Error if no LLM is available
     raise LlmMetaClient::Exceptions::OllamaUnavailableError, "No LLM available" if llm_options.empty?
 
-    # Prepare messages for LLM
-    all_messages = ordered_messages.to_a
-    last_msg = all_messages.last
+    # Build prompt and context from direct lineage via PromptExecution
+    last_msg = ordered_messages.last
+    pe = last_msg.prompt_navigator_prompt_execution
 
-    # Prepare prompt and context
-    prompt = { role: last_msg.role, prompt: last_msg.prompt_navigator_prompt_execution.prompt }
-    context = all_messages[0...-1].last(Rails.configuration.summarize_conversation_count).map do |msg|
-      { role: msg.role, prompt: msg.prompt_navigator_prompt_execution.prompt, response: msg.prompt_navigator_prompt_execution&.response }
-    end
+    prompt = { role: last_msg.role, prompt: pe.prompt }
+    context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
 
     if context.empty?
       summarized_context = "No context available."
     else
-      # Summarize context
       summarized_context = LlmMetaClient::ServerQuery.new.call(jwt_token, llm_uuid, model, context, "Please summarize the context")
     end
 
     summarized_context += "Additional prompt: Responses from the assistant must consist solely of the response body."
 
     # Send chat request using LlmMetaClient::ServerQuery
-    LlmMetaClient::ServerQuery.new.call(jwt_token, llm_uuid, model, summarized_context, prompt, tool_ids: tool_ids)
+    LlmMetaClient::ServerQuery.new.call(jwt_token, llm_uuid, model, summarized_context, prompt, tool_ids: tool_ids, generation_settings: generation_settings)
   end
 end

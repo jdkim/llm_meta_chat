@@ -118,6 +118,9 @@ GEM
       responders
       warden (~> 1.2.3)
     dotenv (3.2.0)
+    dotenv-rails (3.2.0)
+      dotenv (= 3.2.0)
+      railties (>= 6.1)
     drb (2.2.3)
     ed25519 (1.4.0)
     erb (6.0.2)
@@ -340,6 +343,7 @@ GEM
       erb
       psych (>= 4.0.0)
       tsort
+    redcarpet (3.6.1)
     regexp_parser (2.11.3)
     reline (0.6.3)
       io-console (~> 0.5)
@@ -475,6 +479,7 @@ DEPENDENCIES
   capybara
   debug
   devise
+  dotenv-rails
   httparty
   image_processing (~> 1.2)
   importmap-rails
@@ -487,6 +492,7 @@ DEPENDENCIES
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.1)
+  redcarpet
   rubocop-rails-omakase
   selenium-webdriver
   solid_cable

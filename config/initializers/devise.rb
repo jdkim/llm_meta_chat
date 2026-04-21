@@ -304,8 +304,8 @@ Devise.setup do |config|
   # access_type: 'offline' - Allows the application to receive refresh tokens
   # include_granted_scopes: true - Enables incremental authorization
   config.omniauth :google_oauth2,
-                  Rails.application.credentials.dig(:google, :client_id),
-                  Rails.application.credentials.dig(:google, :client_secret),
+                  ENV["GOOGLE_CLIENT_ID"] || Rails.application.credentials.dig(:google, :client_id),
+                  ENV["GOOGLE_CLIENT_SECRET"] || Rails.application.credentials.dig(:google, :client_secret),
                   {
                     scope: "email,profile,openid",
                     prompt: "select_account",

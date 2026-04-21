@@ -10,7 +10,7 @@
     <% if message.role == 'user' %>
       <%= simple_format(message.prompt_navigator_prompt_execution&.prompt) %>
     <% else %>
-      <%= simple_format(message.prompt_navigator_prompt_execution&.response) %>
+      <%= markdown(message.prompt_navigator_prompt_execution&.response) %>
     <% end %>
   </div>
 </div>

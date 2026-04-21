@@ -47,9 +47,14 @@ gem "omniauth-google-oauth2"
 gem "omniauth-rails_csrf_protection"
 gem "httparty"
 
+gem "redcarpet"
+
 gem "llm_meta_client", "~> 1.0"
 
 group :development, :test do
+  # Load environment variables from .env files
+  gem "dotenv-rails"
+
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 

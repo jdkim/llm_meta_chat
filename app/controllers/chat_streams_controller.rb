@@ -17,9 +17,18 @@ class ChatStreamsController < ApplicationController
 
     jwt_token = current_user.id_token if user_signed_in?
     generation_settings = parse_generation_settings(params[:generation_settings_json])
+    tool_ids = Array(params[:tool_ids]).reject(&:blank?)
 
-    assembled = chat.stream_assistant_response(prompt_execution, jwt_token, generation_settings: generation_settings) do |event|
-      forward(event)
+    assembled = chat.stream_assistant_response(prompt_execution, jwt_token, tool_ids: tool_ids, generation_settings: generation_settings) do |event|
+      if event[:event] == "tool_calls"
+        tool_calls = event[:data]["tool_calls"] || []
+        forward(event: "tool_calls", data: {
+          tool_calls: tool_calls,
+          html: view_context.render(partial: "chats/tool_call_message", locals: { tool_calls: tool_calls })
+        })
+      else
+        forward(event)
+      end
     end
 
     if assembled.present?

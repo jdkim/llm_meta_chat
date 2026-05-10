@@ -97,6 +97,7 @@ class ChatsController < ApplicationController
       # The streaming bubble is rendered by create.turbo_stream.erb and opens
       # the EventSource on connect; persistence + title gen happen at stream close.
       @generation_settings_json = params[:generation_settings_json]
+      @tool_ids = Array(params[:tool_ids]).reject(&:blank?)
     end
 
     # Return turbo stream to render both messages
@@ -189,6 +190,7 @@ class ChatsController < ApplicationController
       # The assistant response is streamed by ChatStreamsController (SSE).
       # See create action for details.
       @generation_settings_json = params[:generation_settings_json]
+      @tool_ids = Array(params[:tool_ids]).reject(&:blank?)
     end
 
     # Return turbo stream to render both messages

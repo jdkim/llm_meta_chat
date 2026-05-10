@@ -14,6 +14,7 @@ export default class extends Controller {
     this.source.addEventListener("done", () => this.#onDone())
     this.source.addEventListener("title", (e) => this.#onTitle(e))
     this.source.addEventListener("saved", (e) => this.#onSaved(e))
+    this.source.addEventListener("tool_calls", (e) => this.#onToolCalls(e))
     this.source.addEventListener("error", (e) => this.#onError(e))
   }
 
@@ -43,7 +44,29 @@ export default class extends Controller {
       const data = JSON.parse(event.data)
       this.element.dataset.savedExecutionId = data.execution_id
       if (data.html) this.#swapInRenderedMessage(data.html)
+      // The saved bubble's content already includes any tool calls section in
+      // markdown; remove the transient tool-call bubbles so reload and live look
+      // the same.
+      this.#removeTransientToolCallBubbles()
     } catch {}
+  }
+
+  #onToolCalls(event) {
+    try {
+      const data = JSON.parse(event.data)
+      if (!data.html) return
+      const wrapper = document.createElement("template")
+      wrapper.innerHTML = data.html.trim()
+      const bubble = wrapper.content.firstElementChild
+      if (!bubble) return
+      bubble.classList.add("tool-call-streaming")
+      this.element.parentNode.insertBefore(bubble, this.element)
+      this.#scrollToBottom()
+    } catch {}
+  }
+
+  #removeTransientToolCallBubbles() {
+    document.querySelectorAll(".tool-call-streaming").forEach((el) => el.remove())
   }
 
   // Swap the streaming bubble's role + content with the host-rendered _message

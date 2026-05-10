@@ -69,15 +69,17 @@ class Chat < ApplicationRecord
   end
 
   # Stream the assistant response from the LLM. Yields each parsed SSE event.
-  # Returns the assembled content. Caller is responsible for persistence.
-  def stream_assistant_response(prompt_execution, jwt_token, generation_settings: {}, &block)
-    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token)
+  # Returns the assembled content (with markdown "Tool calls" section appended
+  # if tools fired). Caller is responsible for persistence.
+  def stream_assistant_response(prompt_execution, jwt_token, tool_ids: [], generation_settings: {}, &block)
+    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
     LlmMetaClient::ServerQuery.new.stream(
       jwt_token,
       prompt_execution.llm_uuid,
       prompt_execution.model,
       summarized_context,
       prompt,
+      tool_ids: tool_ids,
       generation_settings: generation_settings,
       &block
     )
@@ -144,7 +146,7 @@ class Chat < ApplicationRecord
 
   # Send messages to LLM and get response
   def send_to_llm(prompt_execution, jwt_token, tool_ids: [], generation_settings: {})
-    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token)
+    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
     LlmMetaClient::ServerQuery.new.call(
       jwt_token,
       prompt_execution.llm_uuid,
@@ -158,7 +160,7 @@ class Chat < ApplicationRecord
 
   # Build the (summarized_context, prompt) tuple for an LLM call.
   # Shared by both the synchronous and streaming paths.
-  def build_streaming_context(prompt_execution, jwt_token)
+  def build_streaming_context(prompt_execution, jwt_token, with_tools: false)
     llm_options = LlmMetaClient::ServerResource.available_llm_options(jwt_token)
     raise LlmMetaClient::Exceptions::OllamaUnavailableError, "No LLM available" if llm_options.empty?
 
@@ -177,6 +179,9 @@ class Chat < ApplicationRecord
         )
       end
     summarized_context += "Additional prompt: Responses from the assistant must consist solely of the response body."
+    if with_tools
+      summarized_context += " If a tool call returns an error, do not give up silently — explain the error and what likely caused it (e.g. an invalid argument value)."
+    end
 
     [ summarized_context, prompt ]
   end

@@ -32,7 +32,7 @@
   <% if user_signed_in? %>
     <div class="sidebar sidebar-left">
       <div id="chat-sidebar">
-        <%= chat_list(->(id) { chat_path(id) }, active_uuid: @active_chat_uuid, download_csv_path: ->(id) { download_csv_chat_path(id) }, download_all_csv_path: download_all_csv_chats_path) %>
+        <%= chat_list(->(id) { chat_path(id) }, active_uuid: @active_chat_uuid, download_csv_path: ->(id) { download_csv_chat_path(id) }, download_all_csv_path: download_all_csv_chats_path, delete_path: ->(id) { chat_path(id) }) %>
       </div>
     </div>
   <% end %>

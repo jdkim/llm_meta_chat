@@ -5,10 +5,10 @@
 <% # User message is already shown by JavaScript on form submit %>
 <% # Only render assistant message here %>
 
-<% # Render assistant message if available %>
-<% if @assistant_message %>
+<%# Render streaming assistant placeholder; the message-stream Stimulus controller opens an EventSource and appends deltas as they arrive. %>
+<% if @prompt_execution && @error_message.blank? %>
 <%= turbo_stream.append "messages-list" do %>
-  <%= render partial: "chats/message", locals: { message: @assistant_message } %>
+  <%= render partial: "chats/streaming_message", locals: { chat: @chat, prompt_execution: @prompt_execution } %>
 <% end %>
 <% end %>
 

@@ -70,9 +70,10 @@ class ChatsController < ApplicationController
     initialize_history @chat&.ordered_by_descending_prompt_executions
 
     if params[:message].present?
-      # Validate generation settings before proceeding
+      # Validate generation settings before proceeding (raises if invalid).
+      # The streaming controller re-parses them from the URL.
       begin
-        generation_settings = generation_settings_param
+        generation_settings_param
       rescue InvalidGenerationSettingsError => e
         @error_message = e.message
         respond_to do |format|
@@ -92,15 +93,10 @@ class ChatsController < ApplicationController
       # Set active message UUID for highlighting in UI
       set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
 
-      # Send to LLM and get assistant response
-      begin
-        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param, generation_settings: generation_settings)
-        # Generate chat title from the user's prompt (only if title is not yet set)
-        @chat.generate_title(params[:message], jwt_token)
-      rescue StandardError => e
-        Rails.logger.error "Error in chat response: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
-        @error_message = "An error occurred while getting the response. Please try again."
-      end
+      # The assistant response is streamed by ChatStreamsController (SSE).
+      # The streaming bubble is rendered by create.turbo_stream.erb and opens
+      # the EventSource on connect; persistence + title gen happen at stream close.
+      @generation_settings_json = params[:generation_settings_json]
     end
 
     # Return turbo stream to render both messages
@@ -167,9 +163,10 @@ class ChatsController < ApplicationController
     initialize_history @chat&.ordered_by_descending_prompt_executions
 
     if params[:message].present?
-      # Validate generation settings before proceeding
+      # Validate generation settings before proceeding (raises if invalid).
+      # The streaming controller re-parses them from the URL.
       begin
-        generation_settings = generation_settings_param
+        generation_settings_param
       rescue InvalidGenerationSettingsError => e
         @error_message = e.message
         respond_to do |format|
@@ -189,13 +186,9 @@ class ChatsController < ApplicationController
       # Set active message UUID for highlighting in UI
       set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
 
-      # Send to LLM and get assistant response
-      begin
-        @assistant_message = @chat.add_assistant_response(@prompt_execution, jwt_token, tool_ids: tool_ids_param, generation_settings: generation_settings)
-      rescue StandardError => e
-        Rails.logger.error "Error in chat response: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
-        @error_message = "An error occurred while getting the response. Please try again."
-      end
+      # The assistant response is streamed by ChatStreamsController (SSE).
+      # See create action for details.
+      @generation_settings_json = params[:generation_settings_json]
     end
 
     # Return turbo stream to render both messages
@@ -206,10 +199,6 @@ class ChatsController < ApplicationController
   end
 
   private
-
-  def tool_ids_param
-    params[:tool_ids].presence || []
-  end
 
   ALLOWED_GENERATION_KEYS = %w[temperature top_k top_p max_tokens repeat_penalty].freeze
 

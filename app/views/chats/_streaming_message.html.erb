@@ -1,0 +1,7 @@
+<% stream_url = chat_stream_path(chat_id: chat.uuid, execution_id: prompt_execution.execution_id, generation_settings_json: @generation_settings_json.presence) %>
+<div class="message assistant streaming"
+     data-controller="message-stream"
+     data-message-stream-url-value="<%= stream_url %>">
+  <div class="message-role">🤖 streaming…</div>
+  <div class="message-content" data-message-stream-target="content"></div>
+</div>

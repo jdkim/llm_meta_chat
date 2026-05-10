@@ -5,10 +5,10 @@
 <% # User message is already shown by JavaScript on form submit %>
 <% # Only render assistant message here %>
 
-<% # Render assistant message if available %>
-<% if @assistant_message %>
+<%# Render streaming assistant placeholder; the message-stream Stimulus controller opens an EventSource and appends deltas as they arrive. %>
+<% if @prompt_execution && @error_message.blank? %>
 <%= turbo_stream.append "messages-list" do %>
-  <%= render partial: "chats/message", locals: { message: @assistant_message } %>
+  <%= render partial: "chats/streaming_message", locals: { chat: @chat, prompt_execution: @prompt_execution } %>
 <% end %>
 <% end %>
 
@@ -25,9 +25,7 @@
 
 <% # Update chat sidebar %>
 <%= turbo_stream.replace "chat-sidebar" do %>
-  <div id="chat-sidebar">
-    <%= chat_list(->(id) { chat_path(id) }, active_uuid: @chat&.uuid, download_csv_path: ->(id) { download_csv_chat_path(id) }, download_all_csv_path: download_all_csv_chats_path) %>
-  </div>
+  <%= render partial: "chats/chat_sidebar", locals: { chat: @chat } %>
 <% end %>
 
 <% # Update history sidebar - replace entire content to ensure update %>

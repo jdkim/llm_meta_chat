@@ -1,7 +1,7 @@
 Rails.application.routes.draw do
   root "chats#new"
 
-  resources :chats, only: [ :new, :create, :edit, :update, :show ] do
+  resources :chats, only: [ :new, :create, :edit, :update, :show, :destroy ] do
     collection do
       delete :clear
       post :start_new
@@ -11,6 +11,7 @@ Rails.application.routes.draw do
       patch :update_title
       get :download_csv
     end
+    resource :stream, only: [ :show ], controller: "chat_streams"
   end
   resources :prompts, only: [ :show ]
 

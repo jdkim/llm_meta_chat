@@ -49,7 +49,9 @@ gem "httparty"
 
 gem "redcarpet"
 
-gem "llm_meta_client", "~> 1.0"
+gem "llm_meta_client", "~> 1.2"
+
+gem "prompt_navigator", "~> 2.0"
 
 group :development, :test do
   # Load environment variables from .env files

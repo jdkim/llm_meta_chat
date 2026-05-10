@@ -1,0 +1,8 @@
+<div id="chat-sidebar">
+  <%= chat_list(
+    ->(id) { chat_path(id) },
+    active_uuid: chat&.uuid,
+    download_csv_path: ->(id) { download_csv_chat_path(id) },
+    download_all_csv_path: download_all_csv_chats_path
+  ) %>
+</div>

@@ -4,7 +4,7 @@ A Rails application for meta-management of LLM services.
 
 ## Requirements
 
-- Ruby 4.0.1
+- Ruby 3.4.9 (see `.ruby-version`)
 - Rails 8.1.2
 
 ## Setup

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 
-Rails 8.1 on Ruby 3.4.9 (the README's "Ruby 4.0.1" is incorrect — `.ruby-version` is authoritative). SQLite via `sqlite3`, Solid Queue / Cache / Cable for background infra, Propshaft + importmap + Hotwire (Turbo + Stimulus), Devise + OmniAuth (Google) for auth, Kamal for deploy.
+Rails 8.1 on Ruby 3.4.9 (`.ruby-version` is authoritative). SQLite via `sqlite3`, Solid Queue / Cache / Cable for background infra, Propshaft + importmap + Hotwire (Turbo + Stimulus), Devise + OmniAuth (Google) for auth, Kamal for deploy.
 
 ## Commands
 

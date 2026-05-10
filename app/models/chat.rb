@@ -68,6 +68,35 @@ class Chat < ApplicationRecord
     new_message
   end
 
+  # Stream the assistant response from the LLM. Yields each parsed SSE event.
+  # Returns the assembled content. Caller is responsible for persistence.
+  def stream_assistant_response(prompt_execution, jwt_token, generation_settings: {}, &block)
+    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token)
+    LlmMetaClient::ServerQuery.new.stream(
+      jwt_token,
+      prompt_execution.llm_uuid,
+      prompt_execution.model,
+      summarized_context,
+      prompt,
+      generation_settings: generation_settings,
+      &block
+    )
+  end
+
+  # Persist the streamed assistant response. Skips persistence if content is blank.
+  def finalize_streamed_response(prompt_execution, content, jwt_token)
+    return nil if content.blank?
+
+    prompt_execution.update!(
+      llm_platform: resolve_llm_type(prompt_execution.llm_uuid, jwt_token),
+      response: content
+    )
+    messages.create!(
+      role: "assistant",
+      prompt_navigator_prompt_execution: prompt_execution
+    )
+  end
+
   # Get all messages in order
   def ordered_messages
     messages
@@ -115,31 +144,40 @@ class Chat < ApplicationRecord
 
   # Send messages to LLM and get response
   def send_to_llm(prompt_execution, jwt_token, tool_ids: [], generation_settings: {})
-    llm_uuid = prompt_execution.llm_uuid
-    model = prompt_execution.model
+    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token)
+    LlmMetaClient::ServerQuery.new.call(
+      jwt_token,
+      prompt_execution.llm_uuid,
+      prompt_execution.model,
+      summarized_context,
+      prompt,
+      tool_ids: tool_ids,
+      generation_settings: generation_settings
+    )
+  end
 
-    # Get LLM options
+  # Build the (summarized_context, prompt) tuple for an LLM call.
+  # Shared by both the synchronous and streaming paths.
+  def build_streaming_context(prompt_execution, jwt_token)
     llm_options = LlmMetaClient::ServerResource.available_llm_options(jwt_token)
-
-    # Error if no LLM is available
     raise LlmMetaClient::Exceptions::OllamaUnavailableError, "No LLM available" if llm_options.empty?
 
-    # Build prompt and context from direct lineage via PromptExecution
     last_msg = ordered_messages.last
     pe = last_msg.prompt_navigator_prompt_execution
-
     prompt = { role: last_msg.role, prompt: pe.prompt }
     context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
 
-    if context.empty?
-      summarized_context = "No context available."
-    else
-      summarized_context = LlmMetaClient::ServerQuery.new.call(jwt_token, llm_uuid, model, context, "Please summarize the context")
-    end
-
+    summarized_context =
+      if context.empty?
+        "No context available."
+      else
+        LlmMetaClient::ServerQuery.new.call(
+          jwt_token, prompt_execution.llm_uuid, prompt_execution.model,
+          context, "Please summarize the context"
+        )
+      end
     summarized_context += "Additional prompt: Responses from the assistant must consist solely of the response body."
 
-    # Send chat request using LlmMetaClient::ServerQuery
-    LlmMetaClient::ServerQuery.new.call(jwt_token, llm_uuid, model, summarized_context, prompt, tool_ids: tool_ids, generation_settings: generation_settings)
+    [ summarized_context, prompt ]
   end
 end

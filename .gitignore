@@ -42,3 +42,5 @@
 
 /.claude/settings.json
 /.claude/settings.local.json
+# vim backup files
+*~

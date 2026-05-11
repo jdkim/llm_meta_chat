@@ -5,9 +5,9 @@
   stimulus_target_prefix = stimulus_controller.gsub('-', '_')
 %>
 <div class="family-field">
-  <label>Family</label>
+  <label>Provider</label>
   <%= select_tag :family,
-                 options_for_select([["Please select a family", ""]] +
+                 options_for_select([["Please select a provider", ""]] +
                                     llm_families.map { |f| [f[:name], f[:llm_type]] }),
                  { required: true,
                    data: {

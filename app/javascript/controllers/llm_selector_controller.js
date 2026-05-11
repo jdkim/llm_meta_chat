@@ -173,7 +173,7 @@ export default class extends Controller {
     if (!this.hasApiKeyTarget) return
 
     this.apiKeyTarget.innerHTML =
-      '<option value="">Please select a service</option>'
+      '<option value="">Please select a family</option>'
     this.apiKeyTarget.disabled = false
 
     for (const key of apiKeys) {
@@ -192,7 +192,7 @@ export default class extends Controller {
     if (!this.hasApiKeyTarget) return
 
     this.apiKeyTarget.innerHTML =
-      '<option value="">Please select a family first</option>'
+      '<option value="">Please select a provider first</option>'
     this.apiKeyTarget.disabled = true
     this.#clearModelSelect()
     this.dispatch("changed")
@@ -229,7 +229,7 @@ export default class extends Controller {
     if (!this.hasModelTarget) return
 
     this.modelTarget.innerHTML =
-      '<option value="">Please select a service first</option>'
+      '<option value="">Please select a family first</option>'
     this.modelTarget.disabled = true
     this.dispatch("changed")
   }

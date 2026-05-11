@@ -5,8 +5,8 @@
 %>
 
 <div class="model-field">
-  <label>LLM model</label>
-  <%= select_tag :model, options_for_select([["Please select a service first", ""]]),
+  <label>Model</label>
+  <%= select_tag :model, options_for_select([["Please select a family first", ""]]),
       { required: true, disabled: true,
         data: { "#{stimulus_target_prefix}-target": "model" } } %>
 </div>

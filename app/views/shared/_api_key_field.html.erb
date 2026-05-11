@@ -4,9 +4,9 @@
   stimulus_target_prefix = stimulus_controller.gsub('-', '_')
 %>
 <div class="api-key-field">
-  <label>LLM Service</label>
+  <label>Family</label>
   <%= select_tag :api_key_uuid,
-                 options_for_select([["Please select a family first", ""]]),
+                 options_for_select([["Please select a provider first", ""]]),
                  { required: true, disabled: true,
                    data: {
                      "#{stimulus_target_prefix}-target": "apiKey",

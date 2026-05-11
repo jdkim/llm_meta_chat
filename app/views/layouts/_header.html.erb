@@ -4,11 +4,7 @@
       <%= link_to "LLM Meta Client", root_path %>
     </div>
     <div class="header-right">
-      <% if @messages.present? %>
-        <%= button_to start_new_chats_path, method: :post, class: "new-text-button" do %>
-          <i class="fa-solid fa-plus"></i> New Chat
-        <% end %>
-      <% end %>
+      <%= render partial: "layouts/new_chat_button" %>
       <% if user_signed_in? %>
         <div class="user-menu">
           <button popovertarget="user-menu-popover" class="user-menu-toggle" type="button">

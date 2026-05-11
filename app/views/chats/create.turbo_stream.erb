@@ -28,6 +28,11 @@
   <%= render partial: "chats/chat_sidebar", locals: { chat: @chat } %>
 <% end %>
 
+<% # Reveal/refresh the "New Chat" header button now that the chat has content %>
+<%= turbo_stream.replace "new-chat-button-slot" do %>
+  <%= render partial: "layouts/new_chat_button" %>
+<% end %>
+
 <% # Update history sidebar - replace entire content to ensure update %>
 <% if @prompt_execution %>
   <%= turbo_stream.replace "history-sidebar" do %>

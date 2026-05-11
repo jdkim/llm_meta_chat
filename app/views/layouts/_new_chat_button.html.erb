@@ -1,0 +1,7 @@
+<div id="new-chat-button-slot" class="new-chat-button-slot">
+  <% if @messages.present? || @user_message.present? %>
+    <%= button_to start_new_chats_path, method: :post, class: "new-text-button" do %>
+      <i class="fa-solid fa-plus"></i> New Chat
+    <% end %>
+  <% end %>
+</div>

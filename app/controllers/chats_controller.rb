@@ -107,6 +107,27 @@ class ChatsController < ApplicationController
     end
   end
 
+  def destroy
+    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
+    chat = scope.find_by(uuid: params[:id])
+    was_active = chat && session[:chat_id] == chat.id
+    if chat
+      session.delete(:chat_id) if was_active
+      chat.destroy
+    end
+
+    initialize_chat(user_signed_in? ? current_user.chats : nil)
+
+    if was_active
+      redirect_to root_path
+    else
+      respond_to do |format|
+        format.turbo_stream
+        format.html { redirect_to root_path }
+      end
+    end
+  end
+
   def update_title
     chat = current_user.chats.find_by!(uuid: params[:id])
     title = params[:title].to_s.strip

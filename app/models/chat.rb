@@ -31,7 +31,7 @@ class Chat < ApplicationRecord
   end
 
   # Add a user message to the chat
-  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil)
+  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil)
     previous_id = if branch_from_execution_id.present?
       PromptNavigator::PromptExecution.find_by(execution_id: branch_from_execution_id)&.id
     else
@@ -41,6 +41,7 @@ class Chat < ApplicationRecord
       prompt: message,
       llm_uuid: llm_uuid,
       model: model,
+      llm_platform: llm_platform,
       configuration: "",
       previous_id: previous_id
     )
@@ -90,7 +91,7 @@ class Chat < ApplicationRecord
     return nil if content.blank?
 
     prompt_execution.update!(
-      llm_platform: resolve_llm_type(prompt_execution.llm_uuid, jwt_token),
+      llm_platform: prompt_execution.llm_platform.presence || resolve_llm_type(prompt_execution.llm_uuid, jwt_token),
       response: content
     )
     messages.create!(

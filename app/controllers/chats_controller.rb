@@ -87,7 +87,8 @@ class ChatsController < ApplicationController
       @prompt_execution, @user_message = @chat.add_user_message(params[:message],
                                                                 params[:api_key_uuid],
                                                                 params[:model],
-                                                                params[:branch_from_uuid])
+                                                                params[:branch_from_uuid],
+                                                                llm_platform: params[:family])
       # Push to history for rendering
       push_to_history @prompt_execution
       # Set active message UUID for highlighting in UI
@@ -202,7 +203,8 @@ class ChatsController < ApplicationController
       @prompt_execution, @user_message = @chat.add_user_message(params[:message],
                                                                params[:api_key_uuid],
                                                                params[:model],
-                                                               params[:branch_from_uuid])
+                                                               params[:branch_from_uuid],
+                                                               llm_platform: params[:family])
       # Push to history for rendering
       push_to_history @prompt_execution
       # Set active message UUID for highlighting in UI

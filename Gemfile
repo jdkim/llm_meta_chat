@@ -49,7 +49,7 @@ gem "httparty"
 
 gem "redcarpet"
 
-gem "llm_meta_client", "~> 1.3"
+gem "llm_meta_client", "~> 1.4"
 
 gem "prompt_navigator", "~> 2.0"
 

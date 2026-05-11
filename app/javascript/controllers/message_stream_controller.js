@@ -15,6 +15,7 @@ export default class extends Controller {
     this.source.addEventListener("title", (e) => this.#onTitle(e))
     this.source.addEventListener("saved", (e) => this.#onSaved(e))
     this.source.addEventListener("tool_calls", (e) => this.#onToolCalls(e))
+    this.source.addEventListener("phase", (e) => this.#onPhase(e))
     this.source.addEventListener("error", (e) => this.#onError(e))
   }
 
@@ -26,8 +27,18 @@ export default class extends Controller {
     let delta
     try { delta = JSON.parse(event.data).delta } catch { return }
     if (!delta) return
+    // First content delta after a "thinking" phase: flip the role label so
+    // the user knows generation has actually started.
+    this.#exitThinkingPhase()
     this.contentTarget.append(delta)
     this.#scrollToBottom()
+  }
+
+  #exitThinkingPhase() {
+    const role = this.element.querySelector(".message-role")
+    if (role && role.textContent.includes("Thinking")) {
+      role.textContent = "🤖 streaming…"
+    }
   }
 
   #onTitle(event) {
@@ -67,6 +78,21 @@ export default class extends Controller {
 
   #removeTransientToolCallBubbles() {
     document.querySelectorAll(".tool-call-streaming").forEach((el) => el.remove())
+  }
+
+  // Phase events from the server signal what it's currently doing during the
+  // synchronous parts of a tool turn (model thinking, tool execution). The role
+  // label reflects the phase so users know progress is real, not a hang.
+  #onPhase(event) {
+    let name
+    try { name = JSON.parse(event.data).name } catch { return }
+    const role = this.element.querySelector(".message-role")
+    if (!role) return
+    const labels = {
+      thinking:    "🤔 Thinking…",
+      responding:  "🤖 streaming…",
+    }
+    if (labels[name]) role.textContent = labels[name]
   }
 
   // Swap the streaming bubble's role + content with the host-rendered _message

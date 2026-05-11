@@ -32,7 +32,7 @@ body {
 
 .body {
   display: flex;
-  min-height: calc(100vh - 60px);
+  height: calc(100vh - 60px);
 }
 
 .sidebar {
@@ -47,6 +47,25 @@ body {
     font-weight: 600;
     color: #374151;
     margin-bottom: 16px;
+  }
+
+  /* Match .chat-messages scrollbar style */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+
+    &:hover {
+      background: #94a3b8;
+    }
   }
 }
 

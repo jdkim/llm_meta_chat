@@ -5,7 +5,8 @@ Rails.application.routes.draw do
     collection do
       delete :clear
       post :start_new
-      get :download_all_csv
+      delete :batch_destroy
+      post :download_selected_csv
     end
     member do
       patch :update_title

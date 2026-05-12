@@ -8,5 +8,8 @@
   <label>Model</label>
   <%= select_tag :model, options_for_select([["Please select a family first", ""]]),
       { required: true, disabled: true,
-        data: { "#{stimulus_target_prefix}-target": "model" } } %>
+        data: {
+          "#{stimulus_target_prefix}-target": "model",
+          action: "change->#{stimulus_controller}#modelChanged"
+        } } %>
 </div>

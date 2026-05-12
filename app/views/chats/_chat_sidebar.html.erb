@@ -3,7 +3,8 @@
     ->(id) { chat_path(id) },
     active_uuid: chat&.uuid,
     download_csv_path: ->(id) { download_csv_chat_path(id) },
-    download_all_csv_path: download_all_csv_chats_path,
-    delete_path: ->(id) { chat_path(id) }
+    delete_path: ->(id) { chat_path(id) },
+    batch_delete_path: batch_destroy_chats_path,
+    batch_download_csv_path: download_selected_csv_chats_path
   ) %>
 </div>

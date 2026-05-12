@@ -4,7 +4,7 @@ class ChatsController < ApplicationController
   include PromptNavigator::HistoryManageable
   # Allow access without login
   skip_before_action :authenticate_user!, raise: false
-  before_action :authenticate_user!, only: [ :update_title, :download_csv, :download_all_csv ]
+  before_action :authenticate_user!, only: [ :update_title, :download_csv, :download_selected_csv, :batch_destroy ]
 
   def show
     # Initialize chat context
@@ -12,6 +12,7 @@ class ChatsController < ApplicationController
 
     @chat = current_user&.chats.includes(:messages).find_by!(uuid: params[:id])
     session[:chat_id] = @chat.id
+    set_active_chat_uuid(@chat&.uuid)
     @messages = @chat.ordered_messages
 
     # Initialize history
@@ -39,6 +40,7 @@ class ChatsController < ApplicationController
       current_user
     )
     add_chat @chat
+    set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
     # initialize history for the chat
     initialize_history @chat&.ordered_by_descending_prompt_executions
@@ -64,6 +66,7 @@ class ChatsController < ApplicationController
       current_user
     )
     add_chat @chat
+    set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
 
     # initialize history for the chat
@@ -129,6 +132,20 @@ class ChatsController < ApplicationController
     end
   end
 
+  def batch_destroy
+    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
+    uuids = Array(params[:uuids]).reject(&:blank?)
+    chats = scope.where(uuid: uuids)
+
+    if chats.any?
+      active_id = session[:chat_id]
+      session.delete(:chat_id) if chats.pluck(:id).include?(active_id)
+      chats.destroy_all
+    end
+
+    redirect_to root_path
+  end
+
   def update_title
     chat = current_user.chats.find_by!(uuid: params[:id])
     title = params[:title].to_s.strip
@@ -164,6 +181,7 @@ class ChatsController < ApplicationController
       session,
       current_user
     )
+    set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
     # initialize history for the chat
     initialize_history @chat&.ordered_by_descending_prompt_executions
@@ -181,6 +199,7 @@ class ChatsController < ApplicationController
     # Use the chat identified by the URL, not the session
     @chat = current_user.chats.find(params[:id])
     session[:chat_id] = @chat.id
+    set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
     # initialize history for the chat
     initialize_history @chat&.ordered_by_descending_prompt_executions

@@ -38,15 +38,15 @@ body {
 .sidebar {
   width: 260px;
   background-color: #ffffff;
-  padding: 20px;
+  padding: 8px;
   overflow-y: auto;
   flex-shrink: 0;
 
   h2 {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     color: #374151;
-    margin-bottom: 16px;
+    margin: 0;
   }
 
   /* Match .chat-messages scrollbar style */

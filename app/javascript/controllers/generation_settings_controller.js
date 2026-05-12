@@ -23,9 +23,11 @@ export default class extends Controller {
     this.panelTarget.style.display = this.expanded ? "block" : "none"
 
     if (this.hasToggleIconTarget) {
-      this.toggleIconTarget.classList.toggle("bi-chevron-down", !this.expanded)
-      this.toggleIconTarget.classList.toggle("bi-chevron-up", this.expanded)
+      this.toggleIconTarget.classList.toggle("bi-chevron-up", !this.expanded)
+      this.toggleIconTarget.classList.toggle("bi-chevron-down", this.expanded)
     }
+
+    if (this.expanded) this.dispatch("opened", { bubbles: true })
   }
 
   validate() {

@@ -8,30 +8,16 @@
   </div>
 
   <div class="chat-input-container">
-    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton" } do |f| %>
-      <% if @llm_families.present? %>
-        <div class="llm-selector-wrapper">
-          <%= render "shared/family_field", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
-          <%= render "shared/api_key_field", stimulus_controller: "llm-selector" %>
-          <%= render "shared/model_field", stimulus_controller: "llm-selector" %>
-        </div>
-        <% if user_signed_in? %>
-          <%= render "shared/tool_selector_field", stimulus_controller: "tool-selector" %>
-        <% end %>
-        <%= render "shared/generation_settings_field", stimulus_controller: "generation-settings" %>
-      <% end %>
+    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton" } do |f| %>
       <div class="input-wrapper">
         <%= f.text_area :message,
             placeholder: "Enter your message...",
             class: "chat-input",
-            rows: 3,
+            rows: 2,
             autofocus: true,
             required: true,
             id: "message-input",
             data: { "chats-form-target": "prompt", action: "input->chats-form#updateSubmitButton" } %>
-      </div>
-      <%= f.hidden_field :branch_from_uuid, value: @branch_from_uuid || params.dig(:chat, :branch_from_uuid) %>
-      <div class="button-wrapper">
         <%= f.button type: "submit",
             class: "send-button",
             disabled: true,
@@ -41,6 +27,34 @@
           <i class="bi bi-send-fill"></i>
         <% end %>
       </div>
+      <% if @llm_families.present? %>
+        <div class="input-controls" data-controller="input-controls">
+          <div class="input-controls-buttons">
+            <div class="llm-toggle-field" data-controller="llm-toggle">
+              <button type="button"
+                      class="llm-toggle-button"
+                      data-llm-toggle-target="toggleButton"
+                      data-action="click->llm-toggle#toggle">
+                <i class="bi bi-cpu"></i>
+                <span data-llm-toggle-target="label">Select LLM</span>
+                <i class="bi bi-chevron-up toggle-icon" data-llm-toggle-target="toggleIcon"></i>
+              </button>
+              <div class="llm-toggle-panel" data-llm-toggle-target="panel" style="display: none;">
+                <div class="llm-selector-wrapper">
+                  <%= render "shared/family_field", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
+                  <%= render "shared/api_key_field", stimulus_controller: "llm-selector" %>
+                  <%= render "shared/model_field", stimulus_controller: "llm-selector" %>
+                </div>
+              </div>
+            </div>
+            <% if user_signed_in? %>
+              <%= render "shared/tool_selector_field", stimulus_controller: "tool-selector" %>
+            <% end %>
+            <%= render "shared/generation_settings_field", stimulus_controller: "generation-settings" %>
+          </div>
+        </div>
+      <% end %>
+      <%= f.hidden_field :branch_from_uuid, value: @branch_from_uuid || params.dig(:chat, :branch_from_uuid) %>
     <% end %>
   </div>
 </div>

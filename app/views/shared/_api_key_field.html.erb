@@ -1,15 +1,6 @@
 <%
   stimulus_controller = local_assigns[:stimulus_controller]
-  # Convert hyphens to underscores for Stimulus targets on the Rails side
   stimulus_target_prefix = stimulus_controller.gsub('-', '_')
 %>
-<div class="api-key-field">
-  <label>Family</label>
-  <%= select_tag :api_key_uuid,
-                 options_for_select([["Please select a provider first", ""]]),
-                 { required: true, disabled: true,
-                   data: {
-                     "#{stimulus_target_prefix}-target": "apiKey",
-                     action: "change->#{stimulus_controller}#apiKeyChanged"
-                   } } %>
-</div>
+<%= hidden_field_tag :api_key_uuid, "",
+    data: { "#{stimulus_target_prefix}-target": "apiKey" } %>

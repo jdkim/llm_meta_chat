@@ -96,12 +96,11 @@ export default class extends Controller {
 
     // Family, API Key and Model selects require JavaScript validation
     const familySelect = document.querySelector('select[name="family"]')
-    const apiKeySelect = document.querySelector('select[name="api_key_uuid"]')
+    const apiKeyInput = document.querySelector('[name="api_key_uuid"]')
     const modelSelect = document.querySelector('select[name="model"]')
 
     const familySelected = familySelect?.value
-    const apiKeyHidden = apiKeySelect?.closest(".api-key-field")?.classList.contains("hidden")
-    const apiKeySelected = apiKeySelect?.value && (apiKeyHidden || !apiKeySelect.disabled)
+    const apiKeySelected = !!apiKeyInput?.value
     const modelSelected = modelSelect?.value && !modelSelect.disabled
 
     return basicFieldsValid && familySelected && apiKeySelected && modelSelected

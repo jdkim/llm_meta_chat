@@ -253,19 +253,22 @@
 }
 
 .input-wrapper {
+  position: relative;
   flex: 1;
 }
 
 .chat-input {
   width: 100%;
   padding: 12px;
+  padding-right: 56px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 15px;
   font-family: inherit;
   resize: vertical;
-  min-height: 60px;
+  min-height: 44px;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -274,14 +277,65 @@
   }
 }
 
-.button-wrapper {
+/* Input controls (LLM + Tools + Settings — mutually exclusive) */
+.input-controls {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.input-controls-buttons {
   display: flex;
-  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* LLM toggle */
+.llm-toggle-field {
+  display: inline-flex;
+}
+
+.llm-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.llm-toggle-button:hover {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.llm-toggle-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.llm-toggle-panel .llm-selector-wrapper {
+  margin-bottom: 0;
 }
 
 /* Tool Selector */
 .tool-selector-field {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .tool-toggle-button {
@@ -321,12 +375,17 @@
 }
 
 .tool-selector-panel {
-  margin-top: 8px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background-color: #f9fafb;
   max-height: 300px;
   overflow-y: auto;
+  z-index: 10;
 }
 
 .tool-loading {
@@ -435,7 +494,7 @@
 
 /* Generation Settings */
 .generation-settings-field {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .generation-settings-toggle-button {
@@ -459,11 +518,17 @@
 }
 
 .generation-settings-panel {
-  margin-top: 8px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background-color: #f9fafb;
   padding: 12px 16px;
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 .generation-settings-label {
@@ -519,22 +584,35 @@
 }
 
 .send-button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
   background-color: #3b82f6;
   color: white;
   border: none;
-  padding: 12px 24px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border-radius: 6px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
+  transition: background-color 0.2s, opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #2563eb;
   }
 
-  &:active {
+  &:active:not(:disabled) {
     background-color: #1d4ed8;
+  }
+
+  &:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 }

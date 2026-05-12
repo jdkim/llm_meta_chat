@@ -26,6 +26,11 @@ export default class extends Controller {
     this._startEditing()
   }
 
+  start() {
+    if (this._isEditing) return
+    this._startEditing()
+  }
+
   _startEditing() {
     this._isEditing = true
     this._originalTitle = this.fullTitleValue

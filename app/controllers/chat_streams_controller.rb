@@ -9,6 +9,13 @@ class ChatStreamsController < ApplicationController
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
 
+    # Initialize early so the disconnect rescue can persist whatever was
+    # forwarded before the user clicked Cancel.
+    partial = +""
+    chat = nil
+    prompt_execution = nil
+    jwt_token = nil
+
     chat = find_chat
     prompt_execution = PromptNavigator::PromptExecution.find_by!(execution_id: params[:execution_id])
     unless chat.messages.exists?(prompt_navigator_prompt_execution_id: prompt_execution.id)
@@ -20,6 +27,10 @@ class ChatStreamsController < ApplicationController
     tool_ids = Array(params[:tool_ids]).reject(&:blank?)
 
     assembled = chat.stream_assistant_response(prompt_execution, jwt_token, tool_ids: tool_ids, generation_settings: generation_settings) do |event|
+      # Accumulate before forwarding so a write failure (ClientDisconnected)
+      # doesn't drop the delta we just received.
+      partial << event[:data]["delta"].to_s if event[:event] == "message"
+
       if event[:event] == "tool_calls"
         tool_calls = event[:data]["tool_calls"] || []
         forward(event: "tool_calls", data: {
@@ -54,7 +65,8 @@ class ChatStreamsController < ApplicationController
 
     forward(event: "done", data: {})
   rescue ActionController::Live::ClientDisconnected
-    Rails.logger.info "[ChatStream] client disconnected"
+    Rails.logger.info "[ChatStream] client disconnected (partial=#{partial.length} chars)"
+    persist_partial(chat, prompt_execution, partial, jwt_token)
   rescue ActiveRecord::RecordNotFound
     forward(event: "error", data: { code: "not_found", message: "Chat or prompt execution not found" }) rescue nil
   rescue StandardError => e
@@ -65,6 +77,16 @@ class ChatStreamsController < ApplicationController
   end
 
   private
+
+  # Best-effort save of the partial content the user already saw when they
+  # cancelled mid-stream. Skips if there's nothing to save or required
+  # context wasn't established before the disconnect.
+  def persist_partial(chat, prompt_execution, partial, jwt_token)
+    return unless chat && prompt_execution && partial.present?
+    chat.finalize_streamed_response(prompt_execution, partial, jwt_token)
+  rescue StandardError => e
+    Rails.logger.warn "[ChatStream] persist_partial failed: #{e.class}: #{e.message}"
+  end
 
   def find_chat
     scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)

@@ -73,6 +73,7 @@
 }
 
 .message {
+  position: relative;
   margin-bottom: 6px;
   padding: 6px 10px;
   border-radius: 8px;
@@ -581,6 +582,34 @@
   font-size: 11px;
   color: #9ca3af;
   margin-top: 4px;
+}
+
+/* Cancel button on the live streaming bubble. */
+.stream-cancel-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+
+  i {
+    font-size: 14px;
+  }
+
+  &:hover {
+    color: #dc2626;
+    background-color: rgba(220, 38, 38, 0.1);
+  }
 }
 
 .send-button {

@@ -33,4 +33,31 @@ class PromptsController < ApplicationController
     Rails.logger.error "Error in PromptsController#show_by_uuid: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
     redirect_to root_path, alert: "Message not found."
   end
+
+  # Leaf-only delete. Re-checks leaf status server-side (a branch could have
+  # been added after the page rendered) so the tree can never be corrupted.
+  def destroy
+    pe = PromptNavigator::PromptExecution.find_by!(execution_id: params[:id])
+    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
+    chat = Message.where(prompt_navigator_prompt_execution_id: pe.id).first&.chat
+
+    unless chat && scope.exists?(id: chat.id)
+      redirect_to(root_path, alert: "Prompt not found.")
+      return
+    end
+
+    if PromptNavigator::PromptExecution.where(previous_id: pe.id).exists?
+      redirect_to(prompt_path(pe.execution_id), alert: "Cannot delete: this prompt has follow-up branches.")
+      return
+    end
+
+    ActiveRecord::Base.transaction do
+      Message.where(prompt_navigator_prompt_execution_id: pe.id).delete_all
+      pe.delete
+    end
+
+    redirect_to chat_path(chat), notice: "Prompt deleted."
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path, alert: "Prompt not found."
+  end
 end

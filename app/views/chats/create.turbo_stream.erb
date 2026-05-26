@@ -84,6 +84,22 @@
           branchField.value = '<%= @prompt_execution&.execution_id %>';
         }
 
+        // Make this tab's chat identity URL-local so cross-tab navigation
+        // can't silently re-target subsequent prompts. After the first POST
+        // /chats, swap the URL bar to /chats/<uuid> and point the form at
+        // /chats/<uuid>/add_prompt for all subsequent prompts.
+        const chatUuid = '<%= @chat&.uuid %>';
+        if (chatUuid) {
+          const desiredPath = `/chats/${chatUuid}`;
+          if (window.location.pathname !== desiredPath) {
+            history.replaceState({}, '', desiredPath);
+          }
+          const chatForm = document.querySelector('.chat-form');
+          if (chatForm) {
+            chatForm.action = `/chats/${chatUuid}/add_prompt`;
+          }
+        }
+
         // Scroll to bottom
         const chatMessages = document.getElementById('chat-messages');
         if (chatMessages) {

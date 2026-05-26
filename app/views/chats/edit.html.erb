@@ -8,7 +8,7 @@
   </div>
 
   <div class="chat-input-container">
-    <%= form_with url: chat_path(@chat), method: :patch, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton" } do |f| %>
+    <%= form_with url: add_prompt_chat_path(@chat.uuid), method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton" } do |f| %>
       <div class="input-wrapper">
         <%= f.text_area :message,
             placeholder: "Enter your message...",

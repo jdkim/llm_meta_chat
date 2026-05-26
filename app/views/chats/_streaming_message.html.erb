@@ -7,6 +7,12 @@
 <div class="message assistant streaming"
      data-controller="message-stream"
      data-message-stream-url-value="<%= stream_url %>">
+  <button type="button" class="stream-cancel-button"
+          title="Cancel"
+          data-message-stream-target="cancelButton"
+          data-action="click->message-stream#cancel">
+    <i class="bi bi-x-circle"></i>
+  </button>
   <div class="message-role">🤖 streaming…</div>
   <div class="message-content" data-message-stream-target="content"></div>
 </div>

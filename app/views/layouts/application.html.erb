@@ -51,7 +51,7 @@
   </div>
   <div class="sidebar sidebar-right">
     <div id="history-sidebar">
-      <%= history_list(->(execution_id) { prompt_path(execution_id) }, active_uuid: @active_message_uuid) %>
+      <%= history_list(->(execution_id) { prompt_path(execution_id) }, active_uuid: @active_message_uuid, delete_path: ->(execution_id) { prompt_path(execution_id) }) %>
     </div>
   </div>
 </div>

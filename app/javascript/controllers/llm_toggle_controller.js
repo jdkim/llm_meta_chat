@@ -11,11 +11,14 @@ export default class extends Controller {
     this.expanded = false
     this._onLlmChanged = this.#updateLabel.bind(this)
     document.addEventListener("llm-selector:changed", this._onLlmChanged)
+    this._onModelSelected = this.#closeOnModelSelected.bind(this)
+    document.addEventListener("llm-selector:modelSelected", this._onModelSelected)
     this.#updateLabel()
   }
 
   disconnect() {
     document.removeEventListener("llm-selector:changed", this._onLlmChanged)
+    document.removeEventListener("llm-selector:modelSelected", this._onModelSelected)
   }
 
   toggle() {
@@ -30,6 +33,14 @@ export default class extends Controller {
     }
 
     if (this.expanded) this.dispatch("opened", { bubbles: true })
+  }
+
+  // Auto-collapse the picker once the user actually picks a model, so they
+  // don't have to click outside. Only closes on a real (non-blank) selection.
+  #closeOnModelSelected() {
+    if (!this.expanded) return
+    const modelSelect = this.element.querySelector('select[name="model"]')
+    if (modelSelect && modelSelect.value) this.toggle()
   }
 
   #updateLabel() {

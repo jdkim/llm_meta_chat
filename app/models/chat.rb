@@ -73,17 +73,35 @@ class Chat < ApplicationRecord
   # Returns the assembled content (with markdown "Tool calls" section appended
   # if tools fired). Caller is responsible for persistence.
   def stream_assistant_response(prompt_execution, jwt_token, tool_ids: [], generation_settings: {}, &block)
-    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
-    LlmMetaClient::ServerQuery.new.stream(
-      jwt_token,
-      prompt_execution.llm_uuid,
-      prompt_execution.model,
-      summarized_context,
-      prompt,
-      tool_ids: tool_ids,
-      generation_settings: generation_settings,
-      &block
-    )
+    last_msg = ordered_messages.last
+    pe = last_msg.prompt_navigator_prompt_execution
+    prompt = { role: last_msg.role, prompt: pe.prompt }
+
+    if image_model?(prompt_execution.model)
+      image_context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
+      LlmMetaClient::ServerQuery.new.stream(
+        jwt_token,
+        prompt_execution.llm_uuid,
+        prompt_execution.model,
+        "",
+        prompt,
+        generation_settings: generation_settings,
+        image_context: image_context,
+        &block
+      )
+    else
+      summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
+      LlmMetaClient::ServerQuery.new.stream(
+        jwt_token,
+        prompt_execution.llm_uuid,
+        prompt_execution.model,
+        summarized_context,
+        prompt,
+        tool_ids: tool_ids,
+        generation_settings: generation_settings,
+        &block
+      )
+    end
   end
 
   # Persist the streamed assistant response. Skips persistence if content is blank.
@@ -168,16 +186,35 @@ class Chat < ApplicationRecord
     last_msg = ordered_messages.last
     pe = last_msg.prompt_navigator_prompt_execution
     prompt = { role: last_msg.role, prompt: pe.prompt }
-    context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
+
+    # Image-generation models don't take prior context. Summarizing through
+    # an image model would just generate an image as the "summary".
+    if image_model?(prompt_execution.model)
+      return [ "No context available.", prompt ]
+    end
+
+    verbatim_count = Rails.configuration.summarize_conversation_count
+    context = pe.build_context(limit: verbatim_count * 4)
 
     summarized_context =
       if context.empty?
         "No context available."
+      elsif context.size <= verbatim_count
+        # Within budget: replay recent turns verbatim, no summarization call.
+        format_transcript(context)
       else
-        LlmMetaClient::ServerQuery.new.call(
-          jwt_token, prompt_execution.llm_uuid, prompt_execution.model,
-          context, "Please summarize the context"
+        # Overflow: summarize the older slice, keep recent turns verbatim.
+        # Summarization runs on a cheap fixed model, not the user's selected
+        # one. Falls back to the user's model if it isn't available.
+        older = context[0...-verbatim_count]
+        recent = context.last(verbatim_count)
+        sum_uuid, sum_model =
+          summarization_target(llm_options) || [ prompt_execution.llm_uuid, prompt_execution.model ]
+        summary = LlmMetaClient::ServerQuery.new.call(
+          jwt_token, sum_uuid, sum_model,
+          older, "Please summarize the context"
         )
+        "Summary of earlier conversation: #{summary}\n\nRecent conversation:\n#{format_transcript(recent)}"
       end
     summarized_context += "Additional prompt: Responses from the assistant must consist solely of the response body."
     if with_tools
@@ -185,5 +222,28 @@ class Chat < ApplicationRecord
     end
 
     [ summarized_context, prompt ]
+  end
+
+  def image_model?(model_meta_id)
+    model_meta_id.to_s.include?("image")
+  end
+
+  def format_transcript(turns)
+    turns.map { |t| "User: #{t[:prompt]}\nAssistant: #{t[:response]}" }.join("\n\n")
+  end
+
+  # Cheap model used to condense overflow context. Pinned for now; if it is
+  # ever removed from the catalog the caller falls back to the user's model.
+  SUMMARIZATION_MODEL = "qwen3-5-4b"
+
+  def summarization_target(llm_options)
+    ollama = llm_options.find { |o| o[:llm_type] == "ollama" }
+    return nil unless ollama
+
+    models = ollama[:available_models] || []
+    available = models.any? { |m| (m["value"] || m[:value]) == SUMMARIZATION_MODEL }
+    return nil unless available
+
+    [ ollama[:uuid], SUMMARIZATION_MODEL ]
   end
 end

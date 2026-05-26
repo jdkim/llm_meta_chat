@@ -60,11 +60,10 @@ class ChatsController < ApplicationController
     # Initialize chat sidebar
     initialize_chat current_user&.chats
 
-    # Find or create chat
-    @chat = Chat.find_or_switch_for_session(
-      session,
-      current_user
-    )
+    # Always create a new chat — URL/form is the source of truth for chat
+    # identity, not session[:chat_id]. This makes the entry point tab-safe:
+    # cross-tab navigation can no longer rewrite the "current chat" under us.
+    @chat = Chat.create!(user: current_user)
     add_chat @chat
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
@@ -191,6 +190,55 @@ class ChatsController < ApplicationController
     Rails.logger.error "Error in ChatsController#edit: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
     @llm_families = []
     flash.now[:alert] = "Chat service is currently unavailable. Please try again later."
+  end
+
+  # Add a prompt to a specific chat identified by URL uuid. This is the
+  # tab-safe entry point: chat identity comes from the URL, not session, so
+  # navigation in another tab can never re-target the prompt.
+  def add_prompt
+    jwt_token = current_user.id_token if user_signed_in?
+
+    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
+    @chat = scope.find_by!(uuid: params[:id])
+
+    initialize_chat current_user&.chats
+    add_chat @chat
+    set_active_chat_uuid(@chat&.uuid)
+    @messages = @chat&.ordered_messages || []
+    initialize_history @chat&.ordered_by_descending_prompt_executions
+
+    if params[:message].present?
+      begin
+        generation_settings_param
+      rescue InvalidGenerationSettingsError => e
+        @error_message = e.message
+        respond_to do |format|
+          format.turbo_stream { render :create }
+          format.html { redirect_to chat_path(@chat.uuid), alert: e.message }
+        end
+        return
+      end
+
+      @prompt_execution, @user_message = @chat.add_user_message(params[:message],
+                                                                params[:api_key_uuid],
+                                                                params[:model],
+                                                                params[:branch_from_uuid],
+                                                                llm_platform: params[:family])
+      push_to_history @prompt_execution
+      set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
+
+      @generation_settings_json = params[:generation_settings_json]
+      @tool_ids = Array(params[:tool_ids]).reject(&:blank?)
+    end
+
+    @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token) rescue []
+
+    respond_to do |format|
+      format.turbo_stream { render :create }
+      format.html { redirect_to chat_path(@chat.uuid) }
+    end
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path, alert: "Chat not found."
   end
 
   def update

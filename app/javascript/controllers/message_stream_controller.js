@@ -4,11 +4,12 @@ import { Controller } from "@hotwired/stimulus"
 // Opens an EventSource on connect, appends each delta to the content target,
 // closes on `done` / `error`.
 export default class extends Controller {
-  static targets = ["content"]
+  static targets = ["content", "cancelButton"]
   static values = { url: String }
 
   connect() {
     this.completed = false
+    this.cancelled = false
     this.source = new EventSource(this.urlValue)
     this.source.addEventListener("message", (e) => this.#onDelta(e))
     this.source.addEventListener("done", () => this.#onDone())
@@ -121,10 +122,27 @@ export default class extends Controller {
     this.#close()
   }
 
+  // User clicked the cancel button. Closing the EventSource is enough to
+  // cascade cancellation upstream — the host's next stream write will raise
+  // ClientDisconnected, propagating cleanly all the way to the provider HTTP
+  // socket. The host's controller persists whatever partial content was
+  // forwarded so the bubble's content matches what's saved on reload.
+  cancel() {
+    if (this.completed || this.cancelled) return
+    this.cancelled = true
+    const role = this.element.querySelector(".message-role")
+    if (role) role.textContent = "🚫 cancelled"
+    this.element.classList.remove("streaming")
+    this.element.classList.add("cancelled")
+    if (this.hasCancelButtonTarget) this.cancelButtonTarget.remove()
+    this.#close()
+  }
+
   #onError(event) {
     // EventSource fires onerror whenever the connection closes — including
-    // immediately after a clean `event: done`. Suppress those.
-    if (this.completed) {
+    // immediately after a clean `event: done` or a user-initiated cancel.
+    // Suppress those.
+    if (this.completed || this.cancelled) {
       this.#close()
       return
     }

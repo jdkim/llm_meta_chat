@@ -49,6 +49,7 @@ export default class extends Controller {
 
   modelChanged() {
     this.dispatch("changed")
+    this.dispatch("modelSelected")
   }
 
   #setDefaults() {

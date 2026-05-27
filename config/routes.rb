@@ -1,7 +1,7 @@
 Rails.application.routes.draw do
   root "chats#new"
 
-  resources :chats, only: [ :new, :create, :edit, :update, :show, :destroy ] do
+  resources :chats, only: [ :new, :create, :show, :destroy ] do
     collection do
       delete :clear
       post :start_new

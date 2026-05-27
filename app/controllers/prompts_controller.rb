@@ -56,7 +56,7 @@ class PromptsController < ApplicationController
       pe.delete
     end
 
-    redirect_to chat_path(chat), notice: "Prompt deleted."
+    redirect_to chat_path(chat.uuid), notice: "Prompt deleted."
   rescue ActiveRecord::RecordNotFound
     redirect_to root_path, alert: "Prompt not found."
   end

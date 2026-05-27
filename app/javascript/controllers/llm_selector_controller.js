@@ -52,6 +52,34 @@ export default class extends Controller {
     this.dispatch("modelSelected")
   }
 
+  // Click handler for a favorite-model button in the Favorites section of
+  // the LLM toggle panel. Sets family + api_key_uuid + model in one step,
+  // bypassing the Provider→Model drill-down. Dispatches modelSelected so
+  // the panel auto-closes (handled by llm-toggle).
+  selectFavorite(event) {
+    const btn = event.currentTarget
+    const family = btn.dataset.family
+    const apiKeyUuid = btn.dataset.apiKeyUuid
+    const modelMeta = btn.dataset.model
+    if (!family || !modelMeta) return
+
+    if (this.hasFamilyTarget) {
+      const familyOption = Array.from(this.familyTarget.options).find(o => o.value === family)
+      if (familyOption) {
+        this.familyTarget.value = familyOption.value
+        this.familyChanged({ target: this.familyTarget })
+      }
+    }
+    if (apiKeyUuid) this.#setApiKey(apiKeyUuid)
+    if (this.hasModelTarget) {
+      const modelOption = Array.from(this.modelTarget.options).find(o => o.value === modelMeta)
+      if (modelOption) {
+        this.modelTarget.value = modelOption.value
+        this.modelChanged()
+      }
+    }
+  }
+
   #setDefaults() {
     const urlParams = new URLSearchParams(window.location.search)
     const defaultFamily = urlParams.get("family") || this.defaultFamilyValue
@@ -139,6 +167,9 @@ export default class extends Controller {
       const option = document.createElement("option")
       option.value = model.value
       option.textContent = model.label
+      // Carry vision-capability through to the DOM so chats-form can gate
+      // the attach button without an extra round-trip.
+      option.dataset.supportsVision = String(model.supports_vision === true)
       this.modelTarget.appendChild(option)
     }
 

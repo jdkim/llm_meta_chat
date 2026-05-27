@@ -291,6 +291,54 @@
   align-items: center;
 }
 
+/* Favorites section at the top of the LLM toggle panel */
+.llm-favorites {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.llm-favorites-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  i {
+    color: #f59e0b;
+    font-size: 12px;
+  }
+}
+
+.llm-favorites-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.llm-favorite-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1f2937;
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    color: #1d4ed8;
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+}
+
 /* LLM toggle */
 .llm-toggle-field {
   display: inline-flex;
@@ -582,6 +630,91 @@
   font-size: 11px;
   color: #9ca3af;
   margin-top: 4px;
+}
+
+/* Drag-and-drop image attachment: highlight the form while dragging. */
+.chat-form.drag-over {
+  outline: 2px dashed #3b82f6;
+  outline-offset: 4px;
+  background-color: rgba(59, 130, 246, 0.04);
+  border-radius: 8px;
+}
+
+/* Image attachment: paperclip button inside the input + thumbnail preview above it. */
+.attach-button {
+  position: absolute;
+  bottom: 10px;
+  right: 56px; /* sits to the left of the send button */
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+
+  i { font-size: 16px; }
+
+  &:hover:not(:disabled) {
+    color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+/* User-attached image inside the message bubble (post-send / on reload). */
+.user-attached-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  object-fit: contain;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 4px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.image-preview img {
+  display: block;
+  max-width: 160px;
+  max-height: 160px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.image-clear-button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+
+  &:hover { color: #dc2626; }
+  i { font-size: 14px; }
 }
 
 /* Cancel button on the live streaming bubble. */

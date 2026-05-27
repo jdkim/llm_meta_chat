@@ -6,39 +6,19 @@ class Chat < ApplicationRecord
 
   before_create :set_uuid
 
-  # Find existing chat from session or create new one
-  class << self
-    def find_or_switch_for_session(session, current_user)
-      chat = find_by_session_chat_id(session, current_user)
-      return chat if chat.present?
-
-      chat = create!(user: current_user)
-      session[:chat_id] = chat.id
-      chat
-    end
-
-    private
-
-    def find_by_session_chat_id(session, current_user)
-      return nil unless session[:chat_id].present?
-
-      if current_user.present?
-        includes(:messages).find_by(id: session[:chat_id], user_id: current_user.id)
-      else
-        includes(:messages).find_by(id: session[:chat_id], user_id: nil)
-      end
-    end
-  end
-
   # Add a user message to the chat
-  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil)
+  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil, image: nil)
     previous_id = if branch_from_execution_id.present?
       PromptNavigator::PromptExecution.find_by(execution_id: branch_from_execution_id)&.id
     else
       messages.where(role: "user").order(:created_at).last&.prompt_navigator_prompt_execution_id
     end
+    # Prepend the attached image as a data-URI markdown image so the saved
+    # prompt renders the image on reload, and so the streaming controller
+    # (reached over a GET EventSource) can recover the image from pe.prompt.
+    prompt_with_image = image.present? ? "![](data:#{image[:mime]};base64,#{image[:data_b64]})\n\n#{message}" : message
     prompt_execution = PromptNavigator::PromptExecution.create!(
-      prompt: message,
+      prompt: prompt_with_image,
       llm_uuid: llm_uuid,
       model: model,
       llm_platform: llm_platform,
@@ -75,7 +55,11 @@ class Chat < ApplicationRecord
   def stream_assistant_response(prompt_execution, jwt_token, tool_ids: [], generation_settings: {}, &block)
     last_msg = ordered_messages.last
     pe = last_msg.prompt_navigator_prompt_execution
-    prompt = { role: last_msg.role, prompt: pe.prompt }
+    # Separate any attached image (data-URI markdown at the head of the
+    # prompt) from the text. The image flows as a structured field; the text
+    # goes through the usual prompt path.
+    text_prompt, attached_image = extract_attached_image(pe.prompt)
+    prompt = { role: last_msg.role, prompt: text_prompt }
 
     if image_model?(prompt_execution.model)
       image_context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
@@ -87,6 +71,7 @@ class Chat < ApplicationRecord
         prompt,
         generation_settings: generation_settings,
         image_context: image_context,
+        image: attached_image,
         &block
       )
     else
@@ -99,6 +84,7 @@ class Chat < ApplicationRecord
         prompt,
         tool_ids: tool_ids,
         generation_settings: generation_settings,
+        image: attached_image,
         &block
       )
     end
@@ -146,6 +132,12 @@ class Chat < ApplicationRecord
 
   # Summarize the user's prompt into a short title via LLM (required by ChatManager::TitleGeneratable)
   def summarize_for_title(prompt_text, jwt_token)
+    # Strip any attached data-URI image from the prompt before titling; the
+    # summarizer shouldn't see the image markdown (it leads to titles like
+    # "Undefined Image" derived from the empty alt text).
+    text_only, _image = extract_attached_image(prompt_text)
+    return nil if text_only.blank?
+
     latest_pe = ordered_by_descending_prompt_executions.first
     return nil unless latest_pe&.llm_uuid && latest_pe&.model
 
@@ -154,7 +146,7 @@ class Chat < ApplicationRecord
       latest_pe.llm_uuid,
       latest_pe.model,
       "No context available.",
-      { role: "user", prompt: "Please summarize the following text into a short title (max 50 characters). Respond with only the title, nothing else: #{prompt_text}" }
+      { role: "user", prompt: "Please summarize the following text into a short title (max 50 characters). Respond with only the title, nothing else: #{text_only}" }
     )
   end
 
@@ -230,6 +222,17 @@ class Chat < ApplicationRecord
 
   def format_transcript(turns)
     turns.map { |t| "User: #{t[:prompt]}\nAssistant: #{t[:response]}" }.join("\n\n")
+  end
+
+  # Pull a single leading `![](data:mime;base64,DATA)` image out of the prompt
+  # text. Returns [text_without_image, {mime:, data_b64:}|nil]. v1 supports a
+  # single image per turn.
+  ATTACHED_IMAGE_HEAD = /\A!\[[^\]]*\]\(data:([^;]+);base64,([^\)]+)\)\s*\n*/m
+  def extract_attached_image(prompt_text)
+    m = prompt_text.to_s.match(ATTACHED_IMAGE_HEAD)
+    return [ prompt_text.to_s, nil ] unless m
+    stripped = prompt_text.sub(ATTACHED_IMAGE_HEAD, "")
+    [ stripped, { mime: m[1], data_b64: m[2] } ]
   end
 
   # Cheap model used to condense overflow context. Pinned for now; if it is

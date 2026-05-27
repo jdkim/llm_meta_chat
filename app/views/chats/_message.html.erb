@@ -8,7 +8,9 @@
   </div>
   <div class="message-content">
     <% if message.role == 'user' %>
-      <%= simple_format(message.prompt_navigator_prompt_execution&.prompt) %>
+      <% img, text = split_attached_image_html(message.prompt_navigator_prompt_execution&.prompt) %>
+      <%= img if img %>
+      <%= simple_format(text) %>
     <% else %>
       <%= markdown(message.prompt_navigator_prompt_execution&.response) %>
     <% end %>

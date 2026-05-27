@@ -8,7 +8,14 @@
   </div>
 
   <div class="chat-input-container">
-    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton" } do |f| %>
+    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
+      <div class="image-preview" data-chats-form-target="imagePreview" style="display: none;">
+        <img data-chats-form-target="imageThumbnail" alt="Attached image preview" />
+        <button type="button" class="image-clear-button" title="Remove image"
+                data-action="click->chats-form#clearImage">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
       <div class="input-wrapper">
         <%= f.text_area :message,
             placeholder: "Enter your message...",
@@ -18,6 +25,16 @@
             required: true,
             id: "message-input",
             data: { "chats-form-target": "prompt", action: "input->chats-form#updateSubmitButton" } %>
+        <button type="button" class="attach-button" disabled
+                title="Attach image"
+                data-chats-form-target="attachButton"
+                data-action="click->chats-form#openImagePicker">
+          <i class="bi bi-paperclip"></i>
+        </button>
+        <%= f.file_field :image, accept: "image/*",
+            data: { "chats-form-target": "imageInput",
+                    action: "change->chats-form#onImageSelected" },
+            style: "display: none;" %>
         <%= f.button type: "submit",
             class: "send-button",
             disabled: true,
@@ -40,6 +57,7 @@
                 <i class="bi bi-chevron-up toggle-icon" data-llm-toggle-target="toggleIcon"></i>
               </button>
               <div class="llm-toggle-panel" data-llm-toggle-target="panel" style="display: none;">
+                <%= render "shared/llm_favorites", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
                 <div class="llm-selector-wrapper">
                   <%= render "shared/family_field", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
                   <%= render "shared/api_key_field", stimulus_controller: "llm-selector" %>

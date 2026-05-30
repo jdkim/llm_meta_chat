@@ -277,4 +277,189 @@ class ChatTest < ActiveSupport::TestCase
 
     assert_equal "openai", pe.reload.llm_platform
   end
+
+  # ----- build_streaming_context (private — token-budget decisions) ----- #
+
+  # Builds a linear chain of N user→assistant turns on the chat, returning the
+  # last (most-recent) PE. Each turn's prompt/response are "p<i>" / "r<i>".
+  def build_chain(n, model: "gpt-5", llm_uuid: "key-1")
+    last_pe = nil
+    n.times do |i|
+      pe = PromptNavigator::PromptExecution.create!(
+        prompt: "p#{i + 1}", response: "r#{i + 1}",
+        llm_uuid: llm_uuid, model: model, configuration: "", previous_id: last_pe&.id
+      )
+      @chat.messages.create!(role: "user", prompt_navigator_prompt_execution: pe)
+      @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+      last_pe = pe
+    end
+    last_pe
+  end
+
+  # Helper to pin verbatim_count for a single test (default is 10).
+  def with_verbatim_count(n)
+    original = Rails.configuration.summarize_conversation_count
+    Rails.configuration.summarize_conversation_count = n
+    yield
+  ensure
+    Rails.configuration.summarize_conversation_count = original
+  end
+
+  test "build_streaming_context raises OllamaUnavailableError when no LLM options are configured" do
+    pe = build_chain(1)
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options, []) do
+      assert_raises(LlmMetaClient::Exceptions::OllamaUnavailableError) do
+        @chat.send(:build_streaming_context, pe, "jwt")
+      end
+    end
+  end
+
+  test "build_streaming_context returns 'No context available.' for image-gen models regardless of chain depth" do
+    pe = build_chain(5, model: "gemini-3-pro-image")
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+              [ { uuid: "k", llm_type: "openai" } ]) do
+      ctx, prompt = @chat.send(:build_streaming_context, pe, "jwt")
+      assert_equal "No context available.", ctx
+      # The current-turn prompt is still passed through.
+      assert_equal "p5", prompt[:prompt]
+    end
+  end
+
+  test "build_streaming_context returns 'No context available.' (+ suffix) for a root prompt with no ancestors" do
+    pe = build_chain(1)
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+              [ { uuid: "k", llm_type: "openai" } ]) do
+      ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
+      assert_includes ctx, "No context available."
+      assert_includes ctx, "Additional prompt:"
+    end
+  end
+
+  test "build_streaming_context replays ancestors verbatim when chain length <= verbatim_count" do
+    # 3 turns, verbatim_count = 5 → all ancestors replayed verbatim, no summarize call.
+    pe = build_chain(3)
+    called_summarize = false
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) { |*| called_summarize = true; "x" }
+
+    with_verbatim_count(5) do
+      with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+                [ { uuid: "k", llm_type: "openai" } ]) do
+        with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+          ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
+          # The leaf is the active turn; ancestors are the prior 2 PEs.
+          assert_includes ctx, "User: p1\nAssistant: r1"
+          assert_includes ctx, "User: p2\nAssistant: r2"
+          # No summary marker should appear.
+          refute_includes ctx, "Summary of earlier conversation"
+        end
+      end
+    end
+    refute called_summarize, "the summarizer must not be invoked within budget"
+  end
+
+  test "build_streaming_context summarizes the older slice and keeps the most-recent verbatim_count turns intact" do
+    # 8 turns total, verbatim_count = 3 → older = 4 ancestors, recent = 3.
+    # (The leaf is the active turn, so ancestors = 7. Older 4 get summarized,
+    # recent 3 stay verbatim.)
+    pe = build_chain(8)
+    captured = nil
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) do |_jwt, _uuid, _model, ctx, _body|
+      captured = ctx
+      "older-summary"
+    end
+
+    with_verbatim_count(3) do
+      with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+                [ { uuid: "k", llm_type: "openai" } ]) do
+        with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+          ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
+
+          assert_includes ctx, "Summary of earlier conversation: older-summary"
+          assert_includes ctx, "Recent conversation:"
+          # Recent 3 of the 7 ancestors are p5..p7 (p8 is the active turn).
+          assert_includes ctx, "User: p5\nAssistant: r5"
+          assert_includes ctx, "User: p6\nAssistant: r6"
+          assert_includes ctx, "User: p7\nAssistant: r7"
+          # Older turns must NOT appear verbatim.
+          refute_includes ctx, "User: p1\nAssistant: r1"
+        end
+      end
+    end
+
+    # The summarizer received the older slice as its context arg (the format
+    # is the raw build_context array — host code passes it through).
+    assert captured.is_a?(Array)
+    assert_equal [ "p1", "p2", "p3", "p4" ], captured.map { |t| t[:prompt] }
+  end
+
+  test "build_streaming_context prefers the ollama qwen summarizer when available" do
+    pe = build_chain(8)
+    summarizer_uuid = summarizer_model = nil
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) do |_jwt, uuid, model, _ctx, _body|
+      summarizer_uuid = uuid
+      summarizer_model = model
+      "summary"
+    end
+
+    options = [
+      { uuid: "key-1", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
+      { uuid: "ollama-local", llm_type: "ollama", available_models: [
+        { "value" => "qwen3-5-4b" }, { "value" => "qwen3-5-9b" }
+      ] }
+    ]
+
+    with_verbatim_count(3) do
+      with_stub(LlmMetaClient::ServerResource, :available_llm_options, options) do
+        with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+          @chat.send(:build_streaming_context, pe, "jwt")
+        end
+      end
+    end
+
+    assert_equal "ollama-local", summarizer_uuid
+    assert_equal "qwen3-5-4b", summarizer_model
+  end
+
+  test "build_streaming_context falls back to the user's own model when ollama qwen isn't available" do
+    pe = build_chain(8)
+    summarizer_uuid = summarizer_model = nil
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) do |_jwt, uuid, model, _ctx, _body|
+      summarizer_uuid = uuid
+      summarizer_model = model
+      "summary"
+    end
+
+    # No ollama in the options at all → summarization_target returns nil.
+    options = [ { uuid: "key-1", llm_type: "openai", available_models: [] } ]
+
+    with_verbatim_count(3) do
+      with_stub(LlmMetaClient::ServerResource, :available_llm_options, options) do
+        with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+          @chat.send(:build_streaming_context, pe, "jwt")
+        end
+      end
+    end
+
+    assert_equal "key-1", summarizer_uuid
+    assert_equal "gpt-5", summarizer_model
+  end
+
+  test "build_streaming_context appends the tool-error directive only when with_tools: true" do
+    pe = build_chain(1)
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+              [ { uuid: "k", llm_type: "openai" } ]) do
+      ctx_no_tools, _ = @chat.send(:build_streaming_context, pe, "jwt", with_tools: false)
+      ctx_tools, _ = @chat.send(:build_streaming_context, pe, "jwt", with_tools: true)
+
+      refute_includes ctx_no_tools, "tool call returns an error"
+      assert_includes ctx_tools, "tool call returns an error"
+      # Both still carry the always-on Additional-prompt suffix.
+      assert_includes ctx_no_tools, "Additional prompt:"
+      assert_includes ctx_tools, "Additional prompt:"
+    end
+  end
 end

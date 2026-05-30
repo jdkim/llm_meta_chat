@@ -49,9 +49,10 @@ gem "httparty"
 
 gem "redcarpet"
 
-gem "llm_meta_client", "~> 1.4"
+gem "llm_meta_client", "~> 1.4", path: "../llm_meta_client"
+gem "chat_manager", "~> 1.1", path: "../chat_manager"
 
-gem "prompt_navigator", "~> 2.0"
+gem "prompt_navigator", "~> 2.0", path: "../prompt_manager"
 
 group :development, :test do
   # Load environment variables from .env files
@@ -79,4 +80,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+
+  # Block real HTTP from tests; meta-server calls must stub_request explicitly.
+  gem "webmock"
 end

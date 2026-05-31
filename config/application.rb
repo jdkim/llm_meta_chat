@@ -6,7 +6,7 @@ require "rails/all"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
-module LlmMetaTestService
+module LlmMetaChat
   class Application < Rails::Application
     # Add asset paths for prompt_navigator gem
     config.assets.paths << Rails.root.join("../prompt_navigator/app/assets/stylesheets")

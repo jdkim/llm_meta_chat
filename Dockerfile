@@ -2,8 +2,8 @@
 # check=error=true
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t llm_meta_test_service .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name llm_meta_test_service llm_meta_test_service
+# docker build -t llm_meta_chat .
+# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name llm_meta_chat llm_meta_chat
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 

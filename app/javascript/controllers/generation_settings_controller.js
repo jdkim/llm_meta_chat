@@ -1,8 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
-const ALLOWED_KEYS = ["temperature", "top_k", "top_p", "max_tokens", "repeat_penalty"]
-
 // Connects to data-controller="generation-settings"
+//
+// The client-side validator only checks that the input is a JSON object;
+// keys and value types are pass-through (matches the server: anything
+// goes, and the provider gem decides which keys it understands).
 export default class extends Controller {
   static targets = [
     "toggleButton",
@@ -51,18 +53,6 @@ export default class extends Controller {
       return
     }
 
-    const unknownKeys = Object.keys(parsed).filter(k => !ALLOWED_KEYS.includes(k))
-    if (unknownKeys.length > 0) {
-      this.#showError(`Unknown keys: ${unknownKeys.join(", ")}`)
-      return
-    }
-
-    const nonNumeric = Object.entries(parsed).filter(([, v]) => typeof v !== "number")
-    if (nonNumeric.length > 0) {
-      this.#showError(`Values must be numeric: ${nonNumeric.map(([k]) => k).join(", ")}`)
-      return
-    }
-
     this.#clearError()
   }
 
@@ -73,10 +63,7 @@ export default class extends Controller {
 
     try {
       const parsed = JSON.parse(input)
-      if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) return false
-      if (Object.keys(parsed).some(k => !ALLOWED_KEYS.includes(k))) return false
-      if (Object.values(parsed).some(v => typeof v !== "number")) return false
-      return true
+      return typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null
     } catch {
       return false
     }

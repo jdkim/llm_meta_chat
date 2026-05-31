@@ -206,7 +206,6 @@ class ChatsController < ApplicationController
 
   private
 
-  ALLOWED_GENERATION_KEYS = %w[temperature top_k top_p max_tokens repeat_penalty].freeze
   MAX_IMAGE_BYTES = 8 * 1024 * 1024 # 8 MB
 
   class InvalidGenerationSettingsError < StandardError; end
@@ -228,22 +227,17 @@ class ChatsController < ApplicationController
     nil
   end
 
+  # Pass-through generation settings: accept any JSON object. Values can be
+  # numbers, booleans, strings, or nested hashes (e.g. Ollama's `options`).
+  # The provider gem / upstream API decides which keys it understands;
+  # unknown keys are typically ignored by the provider.
   def generation_settings_param
     return {} if params[:generation_settings_json].blank?
 
     parsed = JSON.parse(params[:generation_settings_json])
     raise InvalidGenerationSettingsError, "Generation settings must be a JSON object" unless parsed.is_a?(Hash)
 
-    settings = parsed.slice(*ALLOWED_GENERATION_KEYS)
-    invalid_keys = parsed.keys - ALLOWED_GENERATION_KEYS
-    raise InvalidGenerationSettingsError, "Unknown keys: #{invalid_keys.join(', ')}" if invalid_keys.any?
-
-    non_numeric = settings.reject { |_k, v| v.is_a?(Numeric) }
-    if non_numeric.any?
-      raise InvalidGenerationSettingsError, "Values must be numeric: #{non_numeric.keys.join(', ')}"
-    end
-
-    settings.symbolize_keys
+    parsed.deep_symbolize_keys
   rescue JSON::ParserError => e
     raise InvalidGenerationSettingsError, "Invalid JSON: #{e.message}"
   end

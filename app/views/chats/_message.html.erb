@@ -12,7 +12,7 @@
       <%= img if img %>
       <%= simple_format(text) %>
     <% else %>
-      <%= markdown(message.prompt_navigator_prompt_execution&.response) %>
+      <%= assistant_response_markdown(message.prompt_navigator_prompt_execution&.response) %>
     <% end %>
   </div>
 </div>

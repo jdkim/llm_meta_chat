@@ -99,6 +99,37 @@
   color: #374151;
 }
 
+.message-thinking,
+.tool-calls-section {
+  margin: 0.5em 0;
+  padding: 0.5em 0.75em;
+  background: #f3f4f6;
+  border-left: 3px solid #9ca3af;
+  border-radius: 4px;
+  font-size: 0.9em;
+
+  summary {
+    cursor: pointer;
+    color: #6b7280;
+    font-weight: 500;
+    user-select: none;
+  }
+}
+
+.message-thinking .message-thinking-content {
+  margin-top: 0.5em;
+  color: #4b5563;
+  white-space: pre-wrap;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.tool-calls-section ul {
+  margin: 0.5em 0 0;
+  padding-left: 1.25em;
+}
+
 .message-content {
   color: #1f2937;
   line-height: 1.4;

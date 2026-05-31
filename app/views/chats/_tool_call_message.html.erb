@@ -1,22 +1,24 @@
 <div class="message assistant tool-call">
-  <div class="message-role">🛠 Tool calls</div>
   <div class="message-content">
-    <ul>
-      <% tool_calls.each do |tc| %>
-        <% name = tc["name"] || tc[:name] || "(unknown)" %>
-        <% args = tc["arguments"] || tc[:arguments] %>
-        <% args_str = case args
-          when Hash, Array then args.to_json
-          when nil, "" then nil
-          else args.to_s
-        end %>
-        <li>
-          <code><%= name %></code>
-          <% if args_str %>
-            — <code><%= args_str %></code>
-          <% end %>
-        </li>
-      <% end %>
-    </ul>
+    <details class="tool-calls-section" open>
+      <summary>🛠 Tool calls (<%= tool_calls.size %>)</summary>
+      <ul>
+        <% tool_calls.each do |tc| %>
+          <% name = tc["name"] || tc[:name] || "(unknown)" %>
+          <% args = tc["arguments"] || tc[:arguments] %>
+          <% args_str = case args
+            when Hash, Array then args.to_json
+            when nil, "" then nil
+            else args.to_s
+          end %>
+          <li>
+            <code><%= name %></code>
+            <% if args_str %>
+              — <code><%= args_str %></code>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </details>
   </div>
 </div>

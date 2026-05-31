@@ -8,7 +8,7 @@
   </div>
 
   <div class="chat-input-container">
-    <%= form_with url: add_prompt_chat_path(@chat.uuid), method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": "qwen3-5-4b", action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
+    <%= form_with url: add_prompt_chat_path(@chat.uuid), method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": Rails.configuration.default_model, action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
       <div class="image-preview" data-chats-form-target="imagePreview" style="display: none;">
         <img data-chats-form-target="imageThumbnail" alt="Attached image preview" />
         <button type="button" class="image-clear-button" title="Remove image"

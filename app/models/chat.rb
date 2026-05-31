@@ -235,18 +235,22 @@ class Chat < ApplicationRecord
     [ stripped, { mime: m[1], data_b64: m[2] } ]
   end
 
-  # Cheap model used to condense overflow context. Pinned for now; if it is
-  # ever removed from the catalog the caller falls back to the user's model.
-  SUMMARIZATION_MODEL = "qwen3-5-4b"
-
+  # Cheap model used to condense overflow context. Configured via
+  # Rails.configuration.summarization_model (env LLM_SUMMARIZATION_MODEL
+  # or credentials[:llm_service][:summarization_model]). If the configured
+  # meta_id isn't in the ollama family's catalog at request time, the
+  # caller falls back to the user's selected model.
   def summarization_target(llm_options)
     ollama = llm_options.find { |o| o[:llm_type] == "ollama" }
     return nil unless ollama
 
+    target = Rails.configuration.summarization_model
+    return nil unless target.present?
+
     models = ollama[:available_models] || []
-    available = models.any? { |m| (m["value"] || m[:value]) == SUMMARIZATION_MODEL }
+    available = models.any? { |m| (m["value"] || m[:value]) == target }
     return nil unless available
 
-    [ ollama[:uuid], SUMMARIZATION_MODEL ]
+    [ ollama[:uuid], target ]
   end
 end

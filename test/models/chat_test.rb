@@ -140,14 +140,14 @@ class ChatTest < ActiveSupport::TestCase
 
   # ----- summarization_target (private) ----- #
 
-  test "summarization_target returns [ollama_uuid, qwen3-5-4b] when ollama+qwen are available" do
+  test "summarization_target returns [ollama_uuid, SUMMARIZATION_MODEL] when ollama+the model are available" do
     options = [
       { uuid: "openai-key", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-5-4b" }, { "value" => "qwen3-5-9b" }
+        { "value" => "qwen3-6-35b-fast" }, { "value" => "gemma3-27b" }
       ] }
     ]
-    assert_equal [ "ollama-local", "qwen3-5-4b" ],
+    assert_equal [ "ollama-local", "qwen3-6-35b-fast" ],
                  @chat.send(:summarization_target, options)
   end
 
@@ -156,18 +156,18 @@ class ChatTest < ActiveSupport::TestCase
     assert_nil @chat.send(:summarization_target, options)
   end
 
-  test "summarization_target returns nil when ollama is present but qwen3-5-4b is not in its catalog" do
+  test "summarization_target returns nil when ollama is present but SUMMARIZATION_MODEL is not in its catalog" do
     options = [ { uuid: "ollama-local", llm_type: "ollama", available_models: [
-      { "value" => "qwen3-5-9b" }
+      { "value" => "gemma3-27b" }
     ] } ]
     assert_nil @chat.send(:summarization_target, options)
   end
 
   test "summarization_target accepts symbol-keyed model entries too" do
     options = [ { uuid: "ollama-local", llm_type: "ollama", available_models: [
-      { value: "qwen3-5-4b" }
+      { value: "qwen3-6-35b-fast" }
     ] } ]
-    assert_equal [ "ollama-local", "qwen3-5-4b" ],
+    assert_equal [ "ollama-local", "qwen3-6-35b-fast" ],
                  @chat.send(:summarization_target, options)
   end
 
@@ -407,7 +407,7 @@ class ChatTest < ActiveSupport::TestCase
     options = [
       { uuid: "key-1", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-5-4b" }, { "value" => "qwen3-5-9b" }
+        { "value" => "qwen3-6-35b-fast" }, { "value" => "gemma3-27b" }
       ] }
     ]
 
@@ -420,7 +420,7 @@ class ChatTest < ActiveSupport::TestCase
     end
 
     assert_equal "ollama-local", summarizer_uuid
-    assert_equal "qwen3-5-4b", summarizer_model
+    assert_equal "qwen3-6-35b-fast", summarizer_model
   end
 
   test "build_streaming_context falls back to the user's own model when ollama qwen isn't available" do

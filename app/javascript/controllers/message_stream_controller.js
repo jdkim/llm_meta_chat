@@ -16,6 +16,7 @@ export default class extends Controller {
     this.source.addEventListener("title", (e) => this.#onTitle(e))
     this.source.addEventListener("saved", (e) => this.#onSaved(e))
     this.source.addEventListener("tool_calls", (e) => this.#onToolCalls(e))
+    this.source.addEventListener("thinking", (e) => this.#onThinking(e))
     this.source.addEventListener("phase", (e) => this.#onPhase(e))
     this.source.addEventListener("error", (e) => this.#onError(e))
   }
@@ -60,7 +61,62 @@ export default class extends Controller {
       // markdown; remove the transient tool-call bubbles so reload and live look
       // the same.
       this.#removeTransientToolCallBubbles()
+      // Fold the live transient sections now (not on `done`) — `done` fires
+      // AFTER the synchronous title-generation round-trip, which can take
+      // several seconds and would leave the reasoning section open the
+      // whole time. Saved is the natural moment: the final message is
+      // already persisted and rendered.
+      this.#foldTransientSections()
     } catch {}
+  }
+
+  // Thinking deltas (Ollama hybrid models with `think: true`) — rendered
+  // live in a <details> block above the assistant content. Ephemeral:
+  // the server never persists thinking, so this block won't reappear on
+  // page reload.
+  #onThinking(event) {
+    let delta
+    try { delta = JSON.parse(event.data).delta } catch { return }
+    if (!delta) return
+    this.#thinkingContentEl().append(delta)
+    this.#scrollToBottom()
+  }
+
+  #thinkingContentEl() {
+    if (this._thinkingContent) return this._thinkingContent
+    const details = document.createElement("details")
+    details.className = "message-thinking"
+    // Open during streaming so the user can watch the reasoning live;
+    // collapsed at end-of-stream (see #foldTransientSections) so the
+    // final answer gets the screen.
+    details.open = true
+    const summary = document.createElement("summary")
+    summary.textContent = "Reasoning"
+    const body = document.createElement("div")
+    body.className = "message-thinking-content"
+    details.appendChild(summary)
+    details.appendChild(body)
+    this.contentTarget.parentNode.insertBefore(details, this.contentTarget)
+    this._thinkingContent = body
+    this._thinkingDetails = details
+    return body
+  }
+
+  // Collapse the transient streaming-only sections (thinking + live
+  // tool-call bubbles) so the assistant's final message gets the focus.
+  // Called from #onDone and cancel(); #onSaved goes further and removes
+  // the live tool-call bubbles outright, so this is mostly cosmetic for
+  // the no-save (empty content) and cancel paths.
+  #foldTransientSections() {
+    if (this._thinkingDetails) this._thinkingDetails.open = false
+    document.querySelectorAll(".tool-call-streaming details.tool-calls-section[open]")
+      .forEach((d) => { d.open = false })
+  }
+
+  #removeThinkingBlock() {
+    const el = this._thinkingContent?.parentNode
+    if (el && el.parentNode) el.parentNode.removeChild(el)
+    this._thinkingContent = null
   }
 
   #onToolCalls(event) {
@@ -119,6 +175,7 @@ export default class extends Controller {
 
   #onDone() {
     this.completed = true
+    this.#foldTransientSections()
     this.#close()
   }
 
@@ -135,6 +192,7 @@ export default class extends Controller {
     this.element.classList.remove("streaming")
     this.element.classList.add("cancelled")
     if (this.hasCancelButtonTarget) this.cancelButtonTarget.remove()
+    this.#foldTransientSections()
     this.#close()
   }
 

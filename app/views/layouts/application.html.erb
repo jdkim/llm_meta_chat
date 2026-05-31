@@ -37,6 +37,9 @@
     </div>
   <% end %>
   <div class="content <%= 'content-full' if controller_name == 'chats' %>">
+    <% if user_signed_in? && current_user.needs_reauth? %>
+      <%= render "layouts/reauth_banner" %>
+    <% end %>
     <% if alert %>
       <div class="flash alert"><%= alert %></div>
     <% end %>

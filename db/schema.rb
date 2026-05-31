@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_060305) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_31_090847) do
   create_table "chats", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "title"
@@ -49,6 +49,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_060305) do
     t.string "email", null: false
     t.string "google_id"
     t.text "id_token"
+    t.datetime "id_token_expires_at"
+    t.text "refresh_token"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["google_id"], name: "index_users_on_google_id", unique: true

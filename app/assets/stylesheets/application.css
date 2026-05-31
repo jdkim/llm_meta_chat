@@ -264,3 +264,46 @@ header {
     background-color: #f3f4f6;
   }
 }
+
+/* Banner shown when the signed-in user's Google ID token is expired AND
+ * the stored refresh_token can't mint a new one (revoked, missing, etc.).
+ * Click bounces back through omniauth; chats_form_controller stashes any
+ * unsent prompt in localStorage and re-hydrates after the round-trip. */
+.reauth-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: 0 0 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 6px;
+  color: #9a3412;
+  font-size: 14px;
+}
+
+.reauth-banner i.bi {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.reauth-banner-message {
+  flex: 1;
+}
+
+.reauth-banner-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #ea580c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reauth-banner-button:hover { background: #c2410c; }

@@ -19,32 +19,62 @@ class User < ApplicationRecord
     end
 
     user.id_token = token
+    user.id_token_expires_at = derive_expires_at(auth, token)
+    # Google only emits refresh_token on the FIRST consent per
+    # user × client (unless prompt=consent forces re-issue). Preserve
+    # whatever's already stored when the current sign-in didn't include
+    # a fresh one — otherwise re-signing in would silently lose offline
+    # access until the user revoked + reconsented.
+    new_refresh = auth.credentials&.refresh_token
+    user.refresh_token = new_refresh if new_refresh.present?
+
     user.save
     user
   end
 
-  # Return Google ID token (OpenID Connect)
-  # Validate expiration timestamp when using the token
-  def jwt_token
-    id_token if id_token.present? && token_valid?
+  # Source the canonical token-expiry timestamp from Google's credentials
+  # if present (most reliable). Falls back to decoding the id_token's
+  # `exp` claim. Returns nil if neither is available — `token_valid?`
+  # then treats the token as expired and triggers refresh.
+  def self.derive_expires_at(auth, id_token)
+    if (e = auth.credentials&.expires_at)
+      return Time.at(e.to_i)
+    end
+    payload = JWT.decode(id_token, nil, false).first
+    Time.at(payload["exp"]) if payload && payload["exp"]
+  rescue StandardError
+    nil
   end
 
-  private
+  # Returns a valid Google ID token, refreshing it via the stored
+  # refresh_token if the current one has expired. Returns nil when no
+  # valid token is available AND no refresh path exists — the caller
+  # should treat that as "this user needs to sign in again."
+  def jwt_token
+    return id_token if id_token.present? && token_valid?
+    return nil if refresh_token.blank?
+    RefreshGoogleIdToken.call(self) ? id_token : nil
+  end
 
-  # Check whether the ID token is valid
+  # True when the in-memory id_token is still usable. We consult the
+  # stored expires_at first (set on omniauth callback / after each
+  # refresh) and fall back to decoding the JWT's `exp` claim for rows
+  # populated before id_token_expires_at was added.
   def token_valid?
     return false if id_token.blank?
+    return Time.current < id_token_expires_at if id_token_expires_at.present?
 
-    begin
-      # Attempt to decode JWT (no signature verification; only checks expiration)
-      decoded_token = JWT.decode(id_token, nil, false)
-      payload = decoded_token.first
-      exp = payload["exp"] if payload
+    payload = JWT.decode(id_token, nil, false).first
+    exp = payload && payload["exp"]
+    exp && Time.now.to_i < exp
+  rescue JWT::DecodeError, JWT::ExpiredSignature
+    false
+  end
 
-      # Valid if current time is before expiration
-      exp && Time.now.to_i < exp
-    rescue JWT::DecodeError, JWT::ExpiredSignature
-      false
-    end
+  # True when the user is in an unrecoverable auth state — i.e., we
+  # can't satisfy a meta-server call without bouncing them through
+  # Google again. Surfaced by the UI as a re-auth banner.
+  def needs_reauth?
+    jwt_token.nil?
   end
 end

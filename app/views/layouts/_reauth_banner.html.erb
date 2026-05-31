@@ -1,0 +1,20 @@
+<%# Shown when the signed-in user has no usable Google ID token —
+    either it expired and refresh failed (revoked refresh_token) or
+    they never had a refresh_token (signed in before access_type: offline,
+    or Google didn't emit one). Any prompt typed before this state was
+    detected is stashed in localStorage by chats_form_controller and
+    restored after the OAuth round-trip. %>
+<div class="reauth-banner" data-controller="reauth-banner">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div class="reauth-banner-message">
+    Your Google sign-in has expired. Re-sign-in to continue using API-key
+    providers (Ollama still works without sign-in).
+  </div>
+  <%= form_with url: user_google_oauth2_omniauth_authorize_path,
+                method: :post, local: true,
+                data: { turbo: false, action: "submit->reauth-banner#stashAndSubmit" } do |form| %>
+    <%= button_tag type: "submit", class: "reauth-banner-button" do %>
+      <i class="fa-brands fa-google"></i> Sign in again
+    <% end %>
+  <% end %>
+</div>

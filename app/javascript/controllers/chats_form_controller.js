@@ -10,6 +10,33 @@ export default class extends Controller {
   connect() {
     this.updateSubmitButton()
     this.updateAttachButton()
+    this.#restoreStashedPrompt()
+  }
+
+  // Pulls any prompt that was stashed by reauth_banner_controller before
+  // bouncing through Google sign-in. One-shot: cleared after restore so
+  // a follow-up sign-in doesn't keep re-hydrating stale text.
+  #restoreStashedPrompt() {
+    if (!this.hasPromptTarget) return
+    try {
+      const raw = localStorage.getItem("llmMetaPromptStash:v1")
+      if (!raw) return
+      const stash = JSON.parse(raw)
+      // Ignore stashes older than 10 minutes — beyond that the user
+      // likely abandoned the flow.
+      const STALE_MS = 10 * 60 * 1000
+      if (!stash || !stash.prompt || (stash.savedAt && Date.now() - stash.savedAt > STALE_MS)) {
+        localStorage.removeItem("llmMetaPromptStash:v1")
+        return
+      }
+      // Don't trample whatever the user has already typed on this page.
+      if (this.promptTarget.value && this.promptTarget.value.trim().length > 0) return
+      this.promptTarget.value = stash.prompt
+      this.updateSubmitButton()
+    } catch { /* malformed stash — ignore */ }
+    finally {
+      localStorage.removeItem("llmMetaPromptStash:v1")
+    }
   }
 
   updateSubmitButton() {

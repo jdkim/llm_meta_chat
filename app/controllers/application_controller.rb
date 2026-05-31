@@ -5,4 +5,30 @@ class ApplicationController < ActionController::Base
 
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
+
+  helper_method :visible_chats_scope, :anonymous_session_token
+
+  # The set of chats the current visitor is allowed to see / modify:
+  #   * signed-in users  → their own chats (`user_id = current_user.id`)
+  #   * anonymous users  → chats stamped with the current browser
+  #                        session ID (`session_id = anonymous_session_token`,
+  #                        `user_id IS NULL`)
+  # Single source of truth for both the sidebar and individual lookups.
+  def visible_chats_scope
+    if user_signed_in?
+      current_user.chats
+    else
+      Chat.where(session_id: anonymous_session_token, user_id: nil)
+    end
+  end
+
+  # Stable identifier for the current browser session, used to stamp
+  # anonymous chats. We mint and store our own random token in the
+  # session itself rather than relying on `session.id` (which is not
+  # always populated on Rails CookieStore). The token survives across
+  # requests as long as the session cookie does — exactly the lifetime
+  # we want for anonymous chat persistence.
+  def anonymous_session_token
+    session[:anon_chat_token] ||= SecureRandom.hex(16)
+  end
 end

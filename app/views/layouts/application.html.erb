@@ -29,13 +29,22 @@
 <%= render "layouts/header" %>
 
 <div class="body">
-  <% if user_signed_in? %>
-    <div class="sidebar sidebar-left">
-      <div id="chat-sidebar">
-        <%= chat_list(->(id) { chat_path(id) }, active_uuid: @active_chat_uuid, download_csv_path: ->(id) { download_csv_chat_path(id) }, delete_path: ->(id) { chat_path(id) }, batch_delete_path: batch_destroy_chats_path, batch_download_csv_path: download_selected_csv_chats_path) %>
-      </div>
+  <%# Sidebar is visible for everyone. Anonymous chats persist via the
+      browser session cookie (chats.session_id). CSV-download routes
+      require login (the controller has authenticate_user! on them), so
+      omit those path helpers when no user. %>
+  <div class="sidebar sidebar-left">
+    <div id="chat-sidebar">
+      <%= chat_list(
+            ->(id) { chat_path(id) },
+            active_uuid: @active_chat_uuid,
+            download_csv_path: user_signed_in? ? ->(id) { download_csv_chat_path(id) } : nil,
+            delete_path: ->(id) { chat_path(id) },
+            batch_delete_path: batch_destroy_chats_path,
+            batch_download_csv_path: user_signed_in? ? download_selected_csv_chats_path : nil
+          ) %>
     </div>
-  <% end %>
+  </div>
   <div class="content <%= 'content-full' if controller_name == 'chats' %>">
     <% if user_signed_in? && current_user.needs_reauth? %>
       <%= render "layouts/reauth_banner" %>

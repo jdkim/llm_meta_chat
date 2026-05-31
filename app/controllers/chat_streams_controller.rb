@@ -89,8 +89,7 @@ class ChatStreamsController < ApplicationController
   end
 
   def find_chat
-    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
-    scope.find_by!(uuid: params[:chat_id])
+    visible_chats_scope.find_by!(uuid: params[:chat_id])
   end
 
   def forward(event)
@@ -112,7 +111,7 @@ class ChatStreamsController < ApplicationController
   end
 
   def render_sidebar_update(chat)
-    initialize_chat(user_signed_in? ? current_user.chats : nil)
+    initialize_chat visible_chats_scope
     add_chat(chat)
     view_context.turbo_stream.replace(
       "chat-sidebar",

@@ -8,9 +8,9 @@ class ChatsController < ApplicationController
 
   def show
     # Initialize chat context
-    initialize_chat current_user&.chats
+    initialize_chat visible_chats_scope
 
-    @chat = current_user&.chats.includes(:messages).find_by!(uuid: params[:id])
+    @chat = visible_chats_scope.includes(:messages).find_by!(uuid: params[:id])
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat.ordered_messages
 
@@ -35,7 +35,7 @@ class ChatsController < ApplicationController
     # Pure new-chat form. No chat row is created until the user actually
     # submits, and nothing is read from session — so opening "/" in a second
     # tab can never surface a previously-active chat from another tab.
-    initialize_chat current_user&.chats
+    initialize_chat visible_chats_scope
     @chat = nil
     @messages = []
     initialize_history []
@@ -52,12 +52,15 @@ class ChatsController < ApplicationController
     jwt_token = current_user.id_token if user_signed_in?
 
     # Initialize chat sidebar
-    initialize_chat current_user&.chats
+    initialize_chat visible_chats_scope
 
     # Always create a new chat — URL/form is the source of truth for chat
     # identity, not session[:chat_id]. This makes the entry point tab-safe:
     # cross-tab navigation can no longer rewrite the "current chat" under us.
-    @chat = Chat.create!(user: current_user)
+    # Anonymous chats get stamped with the browser session ID so the same
+    # visitor can find them in the sidebar across navigation.
+    @chat = Chat.create!(user: current_user,
+                          session_id: user_signed_in? ? nil : anonymous_session_token)
     add_chat @chat
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
@@ -106,14 +109,13 @@ class ChatsController < ApplicationController
   end
 
   def destroy
-    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
-    chat = scope.find_by(uuid: params[:id])
+    chat = visible_chats_scope.find_by(uuid: params[:id])
     # "Currently viewing this chat" is now identified by the URL the user
     # came from (referrer), since chat identity is URL-local, not session.
     was_viewed = chat && request.referer.to_s.include?("/chats/#{chat.uuid}")
     chat&.destroy
 
-    initialize_chat(user_signed_in? ? current_user.chats : nil)
+    initialize_chat visible_chats_scope
 
     if was_viewed
       redirect_to root_path
@@ -126,9 +128,8 @@ class ChatsController < ApplicationController
   end
 
   def batch_destroy
-    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
     uuids = Array(params[:uuids]).reject(&:blank?)
-    scope.where(uuid: uuids).destroy_all
+    visible_chats_scope.where(uuid: uuids).destroy_all
     redirect_to root_path
   end
 
@@ -160,10 +161,9 @@ class ChatsController < ApplicationController
   def add_prompt
     jwt_token = current_user.id_token if user_signed_in?
 
-    scope = user_signed_in? ? current_user.chats : Chat.where(user_id: nil)
-    @chat = scope.find_by!(uuid: params[:id])
+    @chat = visible_chats_scope.find_by!(uuid: params[:id])
 
-    initialize_chat current_user&.chats
+    initialize_chat visible_chats_scope
     add_chat @chat
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []

@@ -78,20 +78,39 @@ export default class extends Controller {
     let delta
     try { delta = JSON.parse(event.data).delta } catch { return }
     if (!delta) return
-    this.#thinkingContentEl().append(delta)
+    const body = this.#thinkingContentEl()
+    body.append(delta)
+    // Keep the scroll glued to the bottom of the fixed-height thinking
+    // viewport so users see the latest reasoning as it streams.
+    body.scrollTop = body.scrollHeight
     this.#scrollToBottom()
   }
 
   #thinkingContentEl() {
     if (this._thinkingContent) return this._thinkingContent
     const details = document.createElement("details")
-    details.className = "message-thinking"
-    // Open during streaming so the user can watch the reasoning live;
-    // collapsed at end-of-stream (see #foldTransientSections) so the
-    // final answer gets the screen.
+    // `thinking-active` triggers the dots animation on the summary while
+    // reasoning is in progress; it's removed by #foldTransientSections
+    // at end-of-stream. The body is fixed-height + scrollable while open
+    // (see chats.css) so a long reasoning trace doesn't dominate the
+    // screen even when expanded.
+    details.className = "message-thinking thinking-active"
+    // Open during streaming; #foldTransientSections collapses it once
+    // the assistant's final message is saved.
     details.open = true
     const summary = document.createElement("summary")
     summary.textContent = "Reasoning"
+    // Three staggered-fade dots after "Reasoning". CSS handles the
+    // animation; the dots are hidden by default and revealed by the
+    // .thinking-active class on the wrapping <details>.
+    const dots = document.createElement("span")
+    dots.className = "thinking-dots"
+    for (let i = 0; i < 3; i += 1) {
+      const dot = document.createElement("span")
+      dot.textContent = "."
+      dots.appendChild(dot)
+    }
+    summary.appendChild(dots)
     const body = document.createElement("div")
     body.className = "message-thinking-content"
     details.appendChild(summary)
@@ -108,7 +127,11 @@ export default class extends Controller {
   // the live tool-call bubbles outright, so this is mostly cosmetic for
   // the no-save (empty content) and cancel paths.
   #foldTransientSections() {
-    if (this._thinkingDetails) this._thinkingDetails.open = false
+    if (this._thinkingDetails) {
+      this._thinkingDetails.open = false
+      // Stop the live "thinking…" animation now that streaming has finished.
+      this._thinkingDetails.classList.remove("thinking-active")
+    }
     document.querySelectorAll(".tool-call-streaming details.tool-calls-section[open]")
       .forEach((d) => { d.open = false })
   }

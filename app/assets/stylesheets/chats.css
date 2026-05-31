@@ -123,6 +123,46 @@
   font-family: ui-monospace, "SF Mono", monospace;
   font-size: 0.9em;
   line-height: 1.5;
+  /* Cap the visible height so long reasoning doesn't push the actual
+   * answer off the screen. The body scrolls internally; the controller
+   * keeps it pinned to the bottom while new deltas arrive. */
+  max-height: 12em;
+  overflow-y: auto;
+}
+
+/* Staggered three-dot "typing" indicator after the Reasoning summary
+ * while thinking is still streaming. The .thinking-active class is set
+ * by message_stream_controller when the thinking block is created and
+ * removed by #foldTransientSections at end-of-stream — the dots are
+ * hidden whenever the class is absent. */
+.thinking-dots {
+  display: none;
+  margin-left: 0.35em;
+  letter-spacing: 0.15em;
+  font-weight: bold;
+}
+
+.message-thinking.thinking-active .thinking-dots {
+  display: inline-block;
+}
+
+.message-thinking.thinking-active .thinking-dots span {
+  display: inline-block;
+  opacity: 0.25;
+  animation: thinking-dot 1.4s ease-in-out infinite;
+}
+
+.message-thinking.thinking-active .thinking-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.message-thinking.thinking-active .thinking-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-dot {
+  0%, 60%, 100% { opacity: 0.25; }
+  30%           { opacity: 1; }
 }
 
 .tool-calls-section ul {

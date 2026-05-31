@@ -1,6 +1,6 @@
-# LLM Meta Test Service
+# LLM Meta Chat
 
-A Rails application for meta-management of LLM services.
+A Rails application for chat based on the LLM Meta infrastructure.
 
 ## Requirements
 

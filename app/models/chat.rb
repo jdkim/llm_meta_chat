@@ -141,13 +141,31 @@ class Chat < ApplicationRecord
     latest_pe = ordered_by_descending_prompt_executions.first
     return nil unless latest_pe&.llm_uuid && latest_pe&.model
 
-    LlmMetaClient::ServerQuery.new.call(
+    raw = LlmMetaClient::ServerQuery.new.call(
       jwt_token,
       latest_pe.llm_uuid,
       latest_pe.model,
       "No context available.",
       { role: "user", prompt: "Please summarize the following text into a short title (max 50 characters). Respond with only the title, nothing else: #{text_only}" }
     )
+    strip_title_markdown(raw)
+  end
+
+  # LLMs frequently wrap titles in markdown emphasis (**bold**, *italic*),
+  # backtick-code, leading "# heading" marks, or surrounding quotes —
+  # sometimes despite explicit instructions to return plain text. Strip
+  # those artifacts so the chat sidebar shows a clean title.
+  def strip_title_markdown(text)
+    text.to_s
+        .gsub(/\A\s*#+\s*/, "")                          # leading "# "
+        .gsub(/`([^`]+)`/, '\1')                          # `inline code`
+        .gsub(/\*\*\*([^\*]+)\*\*\*/, '\1')               # ***triple***
+        .gsub(/\*\*([^\*]+)\*\*/, '\1')                   # **bold**
+        .gsub(/\*([^\*]+)\*/, '\1')                       # *italic*
+        .gsub(/__([^_]+)__/, '\1')                        # __bold__
+        .gsub(/_([^_]+)_/, '\1')                          # _italic_
+        .gsub(/\A["'“”‘’「『]+|["'“”‘’」』]+\z/, "")  # wrapping quotes
+        .strip
   end
 
   # Set a new UUID

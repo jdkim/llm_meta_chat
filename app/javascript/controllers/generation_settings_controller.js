@@ -12,10 +12,12 @@ export default class extends Controller {
     "panel",
     "jsonInput",
     "error",
+    "countBadge",
   ]
 
   connect() {
     this.expanded = false
+    this.#updateCountBadge()
   }
 
   toggle() {
@@ -37,6 +39,7 @@ export default class extends Controller {
 
     if (!input) {
       this.#clearError()
+      this.#updateCountBadge()
       return
     }
 
@@ -45,15 +48,18 @@ export default class extends Controller {
       parsed = JSON.parse(input)
     } catch (e) {
       this.#showError("Invalid JSON syntax")
+      this.#updateCountBadge()
       return
     }
 
     if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
       this.#showError("Must be a JSON object (e.g. {\"temperature\": 0.7})")
+      this.#updateCountBadge()
       return
     }
 
     this.#clearError()
+    this.#updateCountBadge(parsed)
   }
 
   get isValid() {
@@ -83,5 +89,28 @@ export default class extends Controller {
       this.errorTarget.style.display = "none"
     }
     this.jsonInputTarget.classList.remove("generation-settings-json-input--invalid")
+  }
+
+  // Count of top-level keys currently set on the (valid) Settings JSON.
+  // Caller can pass the already-parsed hash to avoid a second JSON.parse;
+  // when omitted we re-parse the textarea (and treat invalid / empty as 0).
+  #updateCountBadge(parsedOpt) {
+    if (!this.hasCountBadgeTarget) return
+    let count = 0
+    if (parsedOpt && typeof parsedOpt === "object" && !Array.isArray(parsedOpt)) {
+      count = Object.keys(parsedOpt).length
+    } else if (this.hasJsonInputTarget) {
+      const input = this.jsonInputTarget.value.trim()
+      if (input) {
+        try {
+          const parsed = JSON.parse(input)
+          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
+            count = Object.keys(parsed).length
+          }
+        } catch { /* invalid → 0 */ }
+      }
+    }
+    this.countBadgeTarget.textContent = count
+    this.countBadgeTarget.style.display = count > 0 ? "inline-block" : "none"
   }
 }

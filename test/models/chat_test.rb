@@ -144,7 +144,7 @@ class ChatTest < ActiveSupport::TestCase
     options = [
       { uuid: "openai-key", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-6-35b-fast" }, { "value" => "gemma3-27b" }
+        { "value" => "qwen3-6-35b-fast" }, { "value" => "qwen3-6-35b" }
       ] }
     ]
     assert_equal [ "ollama-local", "qwen3-6-35b-fast" ],
@@ -158,7 +158,7 @@ class ChatTest < ActiveSupport::TestCase
 
   test "summarization_target returns nil when ollama is present but SUMMARIZATION_MODEL is not in its catalog" do
     options = [ { uuid: "ollama-local", llm_type: "ollama", available_models: [
-      { "value" => "gemma3-27b" }
+      { "value" => "qwen3-6-35b" }
     ] } ]
     assert_nil @chat.send(:summarization_target, options)
   end
@@ -234,6 +234,58 @@ class ChatTest < ActiveSupport::TestCase
     with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
       assert_nil @chat.send(:summarize_for_title, "some text", "jwt")
     end
+  end
+
+  test "summarize_for_title strips markdown formatting from the LLM's reply" do
+    pe, _m = @chat.add_user_message("Hello world", "key-1", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) { |*| "**Greeting**" }
+
+    with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+      assert_equal "Greeting", @chat.send(:summarize_for_title, pe.prompt, "jwt")
+    end
+  end
+
+  # ----- strip_title_markdown (private) ----- #
+
+  test "strip_title_markdown removes ** ** bold emphasis" do
+    assert_equal "Greeting", @chat.send(:strip_title_markdown, "**Greeting**")
+  end
+
+  test "strip_title_markdown removes * * italic emphasis" do
+    assert_equal "Greeting", @chat.send(:strip_title_markdown, "*Greeting*")
+  end
+
+  test "strip_title_markdown removes __ __ and _ _ underscore emphasis" do
+    assert_equal "Greeting", @chat.send(:strip_title_markdown, "__Greeting__")
+    assert_equal "Greeting", @chat.send(:strip_title_markdown, "_Greeting_")
+  end
+
+  test "strip_title_markdown removes inline `code` backticks" do
+    assert_equal "Run bin/dev", @chat.send(:strip_title_markdown, "Run `bin/dev`")
+  end
+
+  test "strip_title_markdown removes a leading # heading marker" do
+    assert_equal "My title", @chat.send(:strip_title_markdown, "# My title")
+    assert_equal "Sub title", @chat.send(:strip_title_markdown, "### Sub title")
+  end
+
+  test "strip_title_markdown strips wrapping straight and curly quotes" do
+    assert_equal "Hello", @chat.send(:strip_title_markdown, '"Hello"')
+    assert_equal "Hello", @chat.send(:strip_title_markdown, "'Hello'")
+    assert_equal "Hello", @chat.send(:strip_title_markdown, "“Hello”")
+    assert_equal "Hello", @chat.send(:strip_title_markdown, "「Hello」")
+  end
+
+  test "strip_title_markdown returns plain text untouched" do
+    assert_equal "A simple title", @chat.send(:strip_title_markdown, "A simple title")
+  end
+
+  test "strip_title_markdown returns empty string for nil and empty input (does not raise)" do
+    assert_equal "", @chat.send(:strip_title_markdown, nil)
+    assert_equal "", @chat.send(:strip_title_markdown, "")
   end
 
   # ----- finalize_streamed_response ----- #
@@ -407,7 +459,7 @@ class ChatTest < ActiveSupport::TestCase
     options = [
       { uuid: "key-1", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-6-35b-fast" }, { "value" => "gemma3-27b" }
+        { "value" => "qwen3-6-35b-fast" }, { "value" => "qwen3-6-35b" }
       ] }
     ]
 

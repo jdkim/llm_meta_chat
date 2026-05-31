@@ -1,6 +1,0 @@
-<%
-  stimulus_controller = local_assigns[:stimulus_controller]
-  stimulus_target_prefix = stimulus_controller.gsub('-', '_')
-%>
-<%= hidden_field_tag :api_key_uuid, "",
-    data: { "#{stimulus_target_prefix}-target": "apiKey" } %>

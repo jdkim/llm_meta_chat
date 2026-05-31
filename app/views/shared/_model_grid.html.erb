@@ -1,0 +1,84 @@
+<%
+  llm_families = local_assigns[:llm_families] || []
+  stimulus_controller = local_assigns[:stimulus_controller] || "model-picker"
+
+  # Build one column per (family × api_key) tuple. "Free" (Ollama) is
+  # always shown first when available; brand-named columns follow.
+  brand_names = { "anthropic" => "Claude", "google" => "Gemini", "openai" => "GPT" }
+  ordered_families = [
+    llm_families.find { |f| f[:llm_type] == "ollama" }
+  ] + brand_names.keys.map { |t| llm_families.find { |f| f[:llm_type] == t } }
+
+  columns = ordered_families.compact.flat_map do |fam|
+    Array(fam[:api_keys]).map do |key|
+      base_title = (fam[:llm_type] == "ollama") ? "Free" : brand_names.fetch(fam[:llm_type], fam[:name].to_s)
+      # Strip the "[Provider] " prefix that the meta-server adds to the
+      # description so the column header reads cleanly.
+      desc = key[:description].to_s.sub(/\A\[[^\]]*\]\s*/, "")
+      multiple_keys = Array(fam[:api_keys]).size > 1
+      title = (multiple_keys && desc.present?) ? "#{base_title} (#{desc})" : base_title
+      {
+        title:        title,
+        family:       fam[:llm_type],
+        api_key_uuid: key[:uuid],
+        models:       Array(key[:available_models])
+      }
+    end
+  end
+%>
+
+<div class="model-grid">
+  <% if columns.any? %>
+    <div class="model-grid-columns" style="--cols: <%= columns.size %>;">
+      <% columns.each do |col| %>
+        <div class="model-grid-column">
+          <div class="model-grid-header"><%= col[:title] %></div>
+          <ul class="model-grid-list">
+            <% col[:models].each do |m| %>
+              <li>
+                <button type="button"
+                        class="model-grid-cell"
+                        title="<%= m['value'] %>"
+                        data-family="<%= col[:family] %>"
+                        data-api-key-uuid="<%= col[:api_key_uuid] %>"
+                        data-model="<%= m['value'] %>"
+                        data-supports-vision="<%= m['supports_vision'] %>"
+                        data-action="click-><%= stimulus_controller %>#pick">
+                  <span class="model-grid-label"><%= m['label'] %></span>
+                  <span class="model-grid-badges">
+                    <% if m['kind'].to_s == "image" %>
+                      <span class="model-badge model-badge-image">image</span>
+                    <% end %>
+                    <% if m['supports_vision'] %>
+                      <span class="model-badge model-badge-vision">vision</span>
+                    <% end %>
+                    <% if m['favorite'] %>
+                      <span class="model-badge model-badge-favorite" title="One of your favorites">★</span>
+                    <% end %>
+                    <% if m['default'] %>
+                      <span class="model-badge model-badge-default" title="Your default model">default</span>
+                    <% end %>
+                  </span>
+                </button>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="model-grid-empty">No models available.</p>
+  <% end %>
+
+  <p class="model-grid-footer">
+    <i class="bi bi-info-circle"></i>
+    <% if user_signed_in? %>
+      <%= link_to "Manage API keys + favorites + default model",
+                  "#{Rails.configuration.llm_service_base_url}/models",
+                  target: "_blank", rel: "noopener" %>
+      to see more providers and customize this picker.
+    <% else %>
+      Sign in to add API keys, favorites, and set a personal default model.
+    <% end %>
+  </p>
+</div>

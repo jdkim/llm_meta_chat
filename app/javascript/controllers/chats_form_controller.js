@@ -45,8 +45,8 @@ export default class extends Controller {
   }
 
   // Disable the attach button when the selected model isn't vision-capable.
-  // The signal comes from the model <option>'s data-supports-vision attribute,
-  // populated by llm-selector from the server's available_models payload.
+  // model-picker stamps data-supports-vision on the hidden #model input
+  // whenever the user picks a model.
   updateAttachButton() {
     if (!this.hasAttachButtonTarget) return
     const supports = this.#selectedModelSupportsVision()
@@ -120,10 +120,16 @@ export default class extends Controller {
   }
 
   #selectedModelSupportsVision() {
-    const modelSelect = document.querySelector('select[name="model"]')
-    if (!modelSelect || !modelSelect.value) return false
-    const opt = modelSelect.options[modelSelect.selectedIndex]
-    return opt && opt.dataset.supportsVision === "true"
+    // The grid-view picker writes the chosen model into a hidden input
+    // and stamps data-supports-vision on it. Fall back to the legacy
+    // <select> shape if the page is still using the old picker.
+    const modelInput = document.querySelector('input[name="model"], select[name="model"]')
+    if (!modelInput || !modelInput.value) return false
+    if (modelInput.tagName === "SELECT") {
+      const opt = modelInput.options[modelInput.selectedIndex]
+      return opt && opt.dataset.supportsVision === "true"
+    }
+    return modelInput.dataset.supportsVision === "true"
   }
 
   // Handle form submission to show user message immediately
@@ -208,14 +214,15 @@ export default class extends Controller {
       return basicFieldsValid
     }
 
-    // Family, API Key and Model selects require JavaScript validation
-    const familySelect = document.querySelector('select[name="family"]')
+    // Family, API key, and model come from the grid picker as hidden inputs
+    // (legacy <select> shape is also tolerated for the old picker).
+    const familyInput = document.querySelector('[name="family"]')
     const apiKeyInput = document.querySelector('[name="api_key_uuid"]')
-    const modelSelect = document.querySelector('select[name="model"]')
+    const modelInput = document.querySelector('[name="model"]')
 
-    const familySelected = familySelect?.value
+    const familySelected = !!familyInput?.value
     const apiKeySelected = !!apiKeyInput?.value
-    const modelSelected = modelSelect?.value && !modelSelect.disabled
+    const modelSelected = !!modelInput?.value && !modelInput.disabled
 
     return basicFieldsValid && familySelected && apiKeySelected && modelSelected
   }

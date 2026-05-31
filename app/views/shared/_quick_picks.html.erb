@@ -1,0 +1,65 @@
+<%
+  llm_families = local_assigns[:llm_families] || []
+  stimulus_controller = local_assigns[:stimulus_controller] || "model-picker"
+
+  # Flatten every (family × api_key × model) combination so the picker
+  # can find both the user's default and their favorites in one pass.
+  all_options = llm_families.flat_map do |fam|
+    Array(fam[:api_keys]).flat_map do |key|
+      Array(key[:available_models]).map do |m|
+        {
+          family:          fam[:llm_type],
+          api_key_uuid:    key[:uuid],
+          meta_id:         m["value"],
+          label:           m["label"],
+          favorite:        m["favorite"] == true,
+          default:         m["default"] == true,
+          supports_vision: m["supports_vision"] == true,
+          kind:            m["kind"]
+        }
+      end
+    end
+  end
+
+  # The user's per-user default (set on the meta-server's /models page) wins.
+  # If they haven't set one, fall back to the system-wide default from config.
+  system_default_meta = Rails.configuration.default_model
+  default_option = all_options.find { |o| o[:default] } ||
+                   all_options.find { |o| o[:meta_id] == system_default_meta }
+
+  # Favorites that aren't already the default (to avoid showing the same
+  # model twice in the row).
+  favorite_options = all_options.select do |o|
+    o[:favorite] && o[:meta_id] != default_option&.dig(:meta_id)
+  end
+%>
+
+<%# Always render the container so model-picker can append a transient
+    quick-pick when the user picks an off-row model from the grid. %>
+<div class="quick-picks" data-<%= stimulus_controller.tr('-', '_') %>-target="quickPicks">
+  <% if default_option %>
+    <button type="button"
+            class="quick-pick-button is-default"
+            title="Your default model"
+            data-family="<%= default_option[:family] %>"
+            data-api-key-uuid="<%= default_option[:api_key_uuid] %>"
+            data-model="<%= default_option[:meta_id] %>"
+            data-supports-vision="<%= default_option[:supports_vision] %>"
+            data-action="click-><%= stimulus_controller %>#pick">
+      <i class="bi bi-star-fill"></i> <%= default_option[:label] %>
+    </button>
+  <% end %>
+
+  <% favorite_options.each do |o| %>
+    <button type="button"
+            class="quick-pick-button"
+            title="<%= o[:meta_id] %>"
+            data-family="<%= o[:family] %>"
+            data-api-key-uuid="<%= o[:api_key_uuid] %>"
+            data-model="<%= o[:meta_id] %>"
+            data-supports-vision="<%= o[:supports_vision] %>"
+            data-action="click-><%= stimulus_controller %>#pick">
+      <%= o[:label] %>
+    </button>
+  <% end %>
+</div>

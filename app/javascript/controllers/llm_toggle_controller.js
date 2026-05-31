@@ -1,24 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Connects to data-controller="llm-toggle"
-// Wraps the LLM picker (family/api_key/model) in a collapsible button that
-// shows the currently selected model name. Coordinates with other input
-// controls (Tools, Settings) via input-controls.
+// Collapsible wrapper around the "Other models" grid panel. Label is
+// static — the currently picked model is shown by the quick-picks row.
 export default class extends Controller {
   static targets = ["toggleButton", "toggleIcon", "panel", "label"]
 
   connect() {
     this.expanded = false
-    this._onLlmChanged = this.#updateLabel.bind(this)
-    document.addEventListener("llm-selector:changed", this._onLlmChanged)
-    this._onModelSelected = this.#closeOnModelSelected.bind(this)
-    document.addEventListener("llm-selector:modelSelected", this._onModelSelected)
-    this.#updateLabel()
-  }
-
-  disconnect() {
-    document.removeEventListener("llm-selector:changed", this._onLlmChanged)
-    document.removeEventListener("llm-selector:modelSelected", this._onModelSelected)
   }
 
   toggle() {
@@ -35,22 +24,4 @@ export default class extends Controller {
     if (this.expanded) this.dispatch("opened", { bubbles: true })
   }
 
-  // Auto-collapse the picker once the user actually picks a model, so they
-  // don't have to click outside. Only closes on a real (non-blank) selection.
-  #closeOnModelSelected() {
-    if (!this.expanded) return
-    const modelSelect = this.element.querySelector('select[name="model"]')
-    if (modelSelect && modelSelect.value) this.toggle()
-  }
-
-  #updateLabel() {
-    if (!this.hasLabelTarget) return
-    const modelSelect = this.element.querySelector('select[name="model"]')
-    const opt = modelSelect && modelSelect.options[modelSelect.selectedIndex]
-    if (opt && opt.value) {
-      this.labelTarget.textContent = opt.text
-    } else {
-      this.labelTarget.textContent = "Select LLM"
-    }
-  }
 }

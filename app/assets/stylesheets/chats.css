@@ -269,55 +269,6 @@
   padding: 12px;
 }
 
-.llm-selector-wrapper {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-
-  .family-field,
-  .api-key-field,
-  .model-field {
-    flex: 1;
-    min-width: 150px;
-
-    &.hidden {
-      display: none;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 4px;
-    }
-
-    select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 14px;
-      background-color: white;
-      cursor: pointer;
-      transition: border-color 0.2s;
-
-      &:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      &:disabled {
-        background-color: #f3f4f6;
-        cursor: not-allowed;
-        opacity: 0.6;
-      }
-    }
-  }
-}
-
 .chat-form {
   display: flex;
   flex-direction: column;
@@ -362,54 +313,6 @@
   align-items: center;
 }
 
-/* Favorites section at the top of the LLM toggle panel */
-.llm-favorites {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.llm-favorites-header {
-  font-size: 12px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  i {
-    color: #f59e0b;
-    font-size: 12px;
-  }
-}
-
-.llm-favorites-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.llm-favorite-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #1f2937;
-  background-color: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-
-  &:hover {
-    color: #1d4ed8;
-    border-color: #3b82f6;
-    background-color: rgba(59, 130, 246, 0.05);
-  }
-}
-
 /* LLM toggle */
 .llm-toggle-field {
   display: inline-flex;
@@ -447,10 +350,6 @@
   padding: 12px 16px;
   z-index: 10;
   box-sizing: border-box;
-}
-
-.llm-toggle-panel .llm-selector-wrapper {
-  margin-bottom: 0;
 }
 
 /* Tool Selector */
@@ -848,4 +747,195 @@
     cursor: not-allowed;
     opacity: 0.6;
   }
+}
+
+/* === Grid-view model picker ============================================ */
+
+/* Quick-picks row sits directly below the prompt textarea (above input-controls). */
+.quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.quick-pick-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1f2937;
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+
+  i { font-size: 11px; color: #f59e0b; }
+
+  &:hover {
+    color: #1d4ed8;
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+
+  &.is-default {
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+  }
+
+  &.is-transient {
+    border-style: dashed;
+    color: #4b5563;
+  }
+
+  &.is-selected {
+    color: #fff;
+    background-color: #2563eb;
+    border-color: #2563eb;
+    border-style: solid;
+    i { color: #fde68a; }
+  }
+}
+
+/* The "Other models" grid panel */
+.model-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-grid-columns {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  gap: 10px;
+}
+
+.model-grid-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.model-grid-header {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-grid-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-grid-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: left;
+  color: #1f2937;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background-color: rgba(59, 130, 246, 0.06);
+    border-color: #93c5fd;
+  }
+
+  &.is-selected {
+    color: #fff;
+    background-color: #2563eb;
+    border-color: #2563eb;
+  }
+}
+
+.model-grid-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.model-grid-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.model-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 8px;
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+.model-badge-vision { background-color: #dbeafe; color: #1d4ed8; }
+.model-badge-image  { background-color: #ede9fe; color: #6d28d9; }
+.model-badge-favorite {
+  background-color: transparent;
+  color: #f59e0b;
+  padding: 0 2px;
+  font-size: 12px;
+}
+.model-badge-default { background-color: #fef3c7; color: #92400e; }
+
+.model-grid-cell.is-selected .model-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.model-grid-cell.is-selected .model-badge-favorite { color: #fde68a; background-color: transparent; }
+
+.model-grid-empty {
+  padding: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.model-grid-footer {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+
+  i { margin-right: 4px; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+}
+
+/* On narrow viewports the 4-column grid stacks two-up. */
+@media (max-width: 720px) {
+  .model-grid-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+  .model-grid-columns { grid-template-columns: 1fr; }
 }

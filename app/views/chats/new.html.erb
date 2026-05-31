@@ -8,7 +8,7 @@
   </div>
 
   <div class="chat-input-container">
-    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form llm-selector", guest: current_user.nil?, "llm-selector-default-family-value": "ollama", "llm-selector-default-model-value": Rails.configuration.default_model, action: "submit->chats-form#submit llm-selector:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
+    <%= form_with url: chats_path, method: :post, class: "chat-form", data: { controller: "chats-form model-picker", guest: current_user.nil?, action: "submit->chats-form#submit model-picker:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
       <div class="image-preview" data-chats-form-target="imagePreview" style="display: none;">
         <img data-chats-form-target="imageThumbnail" alt="Attached image preview" />
         <button type="button" class="image-clear-button" title="Remove image"
@@ -45,6 +45,15 @@
         <% end %>
       </div>
       <% if @llm_families.present? %>
+        <%# Quick-pick row: Default (★) + favorites. One-click model select. %>
+        <%= render "shared/quick_picks", llm_families: @llm_families, stimulus_controller: "model-picker" %>
+
+        <%# Hidden form fields the picker writes into. The chat form
+            submits exactly these to the meta-server. %>
+        <%= hidden_field_tag :family, "", data: { "model-picker-target": "family" } %>
+        <%= hidden_field_tag :api_key_uuid, "", data: { "model-picker-target": "apiKey" } %>
+        <%= hidden_field_tag :model, "", data: { "model-picker-target": "model" }, required: true %>
+
         <div class="input-controls" data-controller="input-controls">
           <div class="input-controls-buttons">
             <div class="llm-toggle-field" data-controller="llm-toggle">
@@ -52,17 +61,12 @@
                       class="llm-toggle-button"
                       data-llm-toggle-target="toggleButton"
                       data-action="click->llm-toggle#toggle">
-                <i class="bi bi-cpu"></i>
-                <span data-llm-toggle-target="label">Select LLM</span>
+                <i class="bi bi-grid-3x3-gap"></i>
+                <span data-llm-toggle-target="label">Other models</span>
                 <i class="bi bi-chevron-up toggle-icon" data-llm-toggle-target="toggleIcon"></i>
               </button>
               <div class="llm-toggle-panel" data-llm-toggle-target="panel" style="display: none;">
-                <%= render "shared/llm_favorites", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
-                <div class="llm-selector-wrapper">
-                  <%= render "shared/family_field", llm_families: @llm_families, stimulus_controller: "llm-selector" %>
-                  <%= render "shared/api_key_field", stimulus_controller: "llm-selector" %>
-                  <%= render "shared/model_field", stimulus_controller: "llm-selector" %>
-                </div>
+                <%= render "shared/model_grid", llm_families: @llm_families, stimulus_controller: "model-picker" %>
               </div>
             </div>
             <% if user_signed_in? %>

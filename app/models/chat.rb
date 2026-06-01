@@ -157,6 +157,8 @@ class Chat < ApplicationRecord
   # those artifacts so the chat sidebar shows a clean title.
   def strip_title_markdown(text)
     text.to_s
+        .gsub(/<unused94>.*?<unused95>/m, "")             # Gemma reasoning block
+        .gsub(/<unused\d+>/, "")                          # orphaned Gemma sentinels
         .gsub(/\A\s*#+\s*/, "")                          # leading "# "
         .gsub(/`([^`]+)`/, '\1')                          # `inline code`
         .gsub(/\*\*\*([^\*]+)\*\*\*/, '\1')               # ***triple***

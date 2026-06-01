@@ -18,7 +18,7 @@ class ChatsController < ApplicationController
     initialize_history @chat.ordered_by_descending_prompt_executions
 
     # Get LLM options available for users
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
 
     # Set active UUID for history sidebar highlighting
@@ -40,7 +40,7 @@ class ChatsController < ApplicationController
     @messages = []
     initialize_history []
 
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
   rescue StandardError => e
     Rails.logger.error "Error in ChatsController#new: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
@@ -49,7 +49,7 @@ class ChatsController < ApplicationController
   end
 
   def create
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
 
     # Initialize chat sidebar
     initialize_chat visible_chats_scope
@@ -159,7 +159,7 @@ class ChatsController < ApplicationController
   # tab-safe entry point: chat identity comes from the URL, not session, so
   # navigation in another tab can never re-target the prompt.
   def add_prompt
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
 
     @chat = visible_chats_scope.find_by!(uuid: params[:id])
 

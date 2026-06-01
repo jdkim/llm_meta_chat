@@ -288,6 +288,16 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal "", @chat.send(:strip_title_markdown, "")
   end
 
+  test "strip_title_markdown drops Gemma <unused94>...<unused95> reasoning blocks" do
+    raw = "<unused94>thought\nHere's a thinking process for analyzing the chest X-ray.\n<unused95>Chest X-ray findings"
+    assert_equal "Chest X-ray findings", @chat.send(:strip_title_markdown, raw)
+  end
+
+  test "strip_title_markdown removes orphaned <unusedNN> tokens when the close sentinel is missing" do
+    assert_equal "Some title", @chat.send(:strip_title_markdown, "<unused94>Some title")
+    assert_equal "Title", @chat.send(:strip_title_markdown, "<unused42>Title")
+  end
+
   # ----- finalize_streamed_response ----- #
 
   test "finalize_streamed_response skips persistence when content is blank" do

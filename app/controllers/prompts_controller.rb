@@ -16,7 +16,7 @@ class PromptsController < ApplicationController
     initialize_history @chat.ordered_by_descending_prompt_executions
 
     # Get LLM options available for users
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
 
     # Set the target message ID for scrolling

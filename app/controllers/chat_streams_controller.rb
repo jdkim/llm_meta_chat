@@ -22,7 +22,7 @@ class ChatStreamsController < ApplicationController
       raise ActiveRecord::RecordNotFound
     end
 
-    jwt_token = current_user.id_token if user_signed_in?
+    jwt_token = current_user.jwt_token if user_signed_in?
     generation_settings = parse_generation_settings(params[:generation_settings_json])
     tool_ids = Array(params[:tool_ids]).reject(&:blank?)
 

@@ -113,6 +113,27 @@ export default class extends Controller {
     return Array.from(items).some((it) => it.kind === "file" && it.type.startsWith("image/"))
   }
 
+  // Paste-to-attach: screenshots and copied images dropped onto the
+  // prompt textarea get routed through the same multipart upload path
+  // as the file picker and drag-drop. Falls through silently when the
+  // selected model isn't vision-capable.
+  onPaste(event) {
+    const items = event.clipboardData && event.clipboardData.items
+    if (!items) return
+    const imageItem = Array.from(items).find(
+      (it) => it.kind === "file" && it.type.startsWith("image/")
+    )
+    if (!imageItem) return
+    if (this.hasAttachButtonTarget && this.attachButtonTarget.disabled) return
+    const file = imageItem.getAsFile()
+    if (!file || !this.hasImageInputTarget) return
+    event.preventDefault()
+    const dt = new DataTransfer()
+    dt.items.add(file)
+    this.imageInputTarget.files = dt.files
+    this.onImageSelected()
+  }
+
   clearImage() {
     if (this.hasImageInputTarget) this.imageInputTarget.value = ""
     if (this.hasImageThumbnailTarget) this.imageThumbnailTarget.src = ""

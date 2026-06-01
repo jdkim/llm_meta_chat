@@ -47,16 +47,19 @@
                   <span class="model-grid-label"><%= m['label'] %></span>
                   <span class="model-grid-badges">
                     <% if m['kind'].to_s == "image" %>
-                      <span class="model-badge model-badge-image">image</span>
+                      <i class="bi bi-image model-badge model-badge-image" title="Image generation"></i>
                     <% end %>
                     <% if m['supports_vision'] %>
-                      <span class="model-badge model-badge-vision">vision</span>
+                      <i class="bi bi-eye model-badge model-badge-vision" title="Vision input"></i>
+                    <% end %>
+                    <% if m['supports_tools'] %>
+                      <i class="bi bi-tools model-badge model-badge-tools" title="Tool / function calling"></i>
                     <% end %>
                     <% if m['favorite'] %>
-                      <span class="model-badge model-badge-favorite" title="One of your favorites">★</span>
+                      <i class="bi bi-star-fill model-badge model-badge-favorite" title="One of your favorites"></i>
                     <% end %>
                     <% if m['default'] %>
-                      <span class="model-badge model-badge-default" title="Your default model">default</span>
+                      <i class="bi bi-bookmark-star-fill model-badge model-badge-default" title="Your default model"></i>
                     <% end %>
                   </span>
                 </button>

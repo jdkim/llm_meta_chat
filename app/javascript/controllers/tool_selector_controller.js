@@ -110,11 +110,17 @@ export default class extends Controller {
       const serverDiv = document.createElement("div")
       serverDiv.className = "mcp-server-item"
       const escapedUuid = this.#escapeAttr(server.uuid)
+      const sharedBadge = server.owned === false
+        ? `<span class="mcp-server-shared-badge" title="Shared by ${this.#escapeAttr(server.shared_by || "another user")} — verify before enabling tools you don't trust">
+             <i class="bi bi-people-fill"></i> ${this.#escapeHtml(server.shared_by || "shared")}
+           </span>`
+        : ""
       serverDiv.innerHTML = `
         <div class="mcp-server-header" data-action="click->tool-selector#toggleServer" data-server-uuid="${escapedUuid}">
           <i class="bi bi-chevron-right server-toggle-icon"></i>
           <i class="bi bi-server"></i>
           <span class="mcp-server-name">${this.#escapeHtml(server.name)}</span>
+          ${sharedBadge}
           ${server.tools && server.tools.length > 0 ? `<span class="tool-available-count">${server.tools.filter((t) => t.active).length} tools</span>` : ""}
         </div>
         <div class="mcp-server-tools" data-server-tools="${escapedUuid}" style="display: none;" data-loaded="${server.tools && server.tools.length > 0 ? "true" : "false"}">

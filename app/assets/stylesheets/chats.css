@@ -465,6 +465,25 @@
   color: #9ca3af;
 }
 
+.mcp-server-shared-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 8px;
+  background-color: #ede9fe;
+  color: #6d28d9;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  i { font-size: 9px; }
+}
+
 .mcp-server-tools {
   padding-left: 24px;
 }
@@ -792,11 +811,10 @@
   }
 
   &.is-selected {
-    color: #fff;
-    background-color: #2563eb;
-    border-color: #2563eb;
+    color: #1f2937;
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
     border-style: solid;
-    i { color: #fde68a; }
   }
 }
 
@@ -887,33 +905,28 @@
   flex: 0 0 auto;
 }
 
+/* Capability/state badges rendered as Bootstrap icons (lightweight,
+   no text → keeps the cell narrow). */
 .model-badge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 5px;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  border-radius: 8px;
-  background-color: #e5e7eb;
-  color: #374151;
-}
-
-.model-badge-vision { background-color: #dbeafe; color: #1d4ed8; }
-.model-badge-image  { background-color: #ede9fe; color: #6d28d9; }
-.model-badge-favorite {
-  background-color: transparent;
-  color: #f59e0b;
-  padding: 0 2px;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   font-size: 12px;
+  line-height: 1;
+  color: #6b7280;
 }
-.model-badge-default { background-color: #fef3c7; color: #92400e; }
 
-.model-grid-cell.is-selected .model-badge {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-.model-grid-cell.is-selected .model-badge-favorite { color: #fde68a; background-color: transparent; }
+.model-badge-vision   { color: #2563eb; }
+.model-badge-image    { color: #7c3aed; }
+.model-badge-tools    { color: #059669; }
+.model-badge-favorite { color: #f59e0b; }
+.model-badge-default  { color: #d97706; }
+
+.model-grid-cell.is-selected .model-badge { color: #fff; }
+.model-grid-cell.is-selected .model-badge-favorite,
+.model-grid-cell.is-selected .model-badge-default { color: #fde68a; }
 
 .model-grid-empty {
   padding: 8px;

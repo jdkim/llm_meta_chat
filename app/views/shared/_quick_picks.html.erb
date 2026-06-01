@@ -28,10 +28,12 @@
                    all_options.find { |o| o[:meta_id] == system_default_meta }
 
   # Favorites that aren't already the default (to avoid showing the same
-  # model twice in the row).
-  favorite_options = all_options.select do |o|
-    o[:favorite] && o[:meta_id] != default_option&.dig(:meta_id)
-  end
+  # model twice in the row). Anonymous visitors have no favorites — they
+  # only see the free (Ollama) family — so promote every available model
+  # to a quick-pick for them, since picking from the grid would be the
+  # only other option.
+  favorite_options = all_options.reject { |o| o[:meta_id] == default_option&.dig(:meta_id) }
+                                .select  { |o| user_signed_in? ? o[:favorite] : true }
 %>
 
 <%# Always render the container so model-picker can append a transient
@@ -46,7 +48,7 @@
             data-model="<%= default_option[:meta_id] %>"
             data-supports-vision="<%= default_option[:supports_vision] %>"
             data-action="click-><%= stimulus_controller %>#pick">
-      <i class="bi bi-star-fill"></i> <%= default_option[:label] %>
+      <%= default_option[:label] %>
     </button>
   <% end %>
 

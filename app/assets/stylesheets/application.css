@@ -141,7 +141,95 @@ header {
     align-items: center;
   }
 
-  .logo a {
+  /* CSS-only rendition of the aibranch.org wordmark — bold "AI" with
+     circuit-node decorations, a "branch" wordmark, and a small ".org"
+     TLD tail. All glyphs share a single navy → teal → mint gradient
+     via background-clip:text so colors stay synced. */
+  .logo a.brand {
+    /* `inline-block` (not flex) — Chromium drops gradient painting on
+       children of a flex container that uses background-clip:text. */
+    display: inline-block;
+    text-decoration: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.005em;
+    /* Slightly tightened gradient so "chat." sits in deep navy and the
+       transition to teal still hits around the "AI" → "branch" boundary
+       (rather than getting compressed by the longer wordmark). */
+    background-image: linear-gradient(95deg,
+      #0d2a4a 0%,
+      #0e2f54 18%,
+      #15466e 40%,
+      #1b7390 65%,
+      #29a59c 88%,
+      #36c4a3 100%);
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+  }
+
+  .logo .brand-sub {
+    /* Subdomain prefix — smaller and lighter than the main wordmark so
+       "AI" remains the visual anchor and the subdomain reads as
+       supporting context rather than competing brand. */
+    font-weight: 500;
+    font-size: 0.7em;
+    letter-spacing: -0.005em;
+    margin-right: 0.05em;
+  }
+
+  .logo .brand-ai {
+    /* Serif "AI" — gives the I top/bottom serifs that disambiguate it
+       from a lowercase l, and adds the tech-monogram contrast the
+       source design has between the AI mark and the sans-serif
+       "branch.org" wordmark. Georgia tops at weight 700 (bold), so we
+       don't request 900 here to avoid faux-bolding. */
+    font-family: Georgia, "Charter", "Iowan Old Style", "Source Serif Pro", serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    padding-right: 2px;
+  }
+
+  .logo .brand-branch {
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+
+  .logo .brand-tld {
+    /* Same baseline as "branch", just smaller and slightly lighter —
+       matches the source design where ".org" reads as a continuation
+       of the wordmark, not a superscript. */
+    font-weight: 600;
+    font-size: 0.7em;
+    letter-spacing: 0;
+  }
+
+  /* Standalone dots between subdomain / brand / TLD. Sized bigger than
+     the surrounding text so they read as substantial separators, and
+     given horizontal margin to space the three URL components apart.
+     Plain inline (no display:inline-block, no positioning) so the
+     parent's background-clip:text gradient keeps painting them. */
+  .logo .brand-dot {
+    font-weight: 700;
+    font-size: 1.15em;
+    line-height: 0;
+    margin: 0 0.05em;
+    vertical-align: -0.02em;
+  }
+
+  /* (The source PNG decorates "AI" with circuit-node dots — those
+     can't be re-introduced via positioned-span overlays here because
+     any inline-block or positioned descendant of a
+     background-clip:text element loses gradient inheritance in
+     Chromium. If pixel-faithful dots are wanted later, paint them
+     with an inline SVG sibling to the wordmark and absolute-position
+     it over the AI region.) */
+
+  /* Old non-brand-link fallback (kept in case anything else uses `.logo a`). */
+  .logo a:not(.brand) {
     font-size: 20px;
     font-weight: 700;
     color: #1f2937;

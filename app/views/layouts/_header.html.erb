@@ -1,7 +1,9 @@
 <header>
   <div class="inner">
     <div class="logo">
-      <%= link_to "LLM Meta Client", root_path %>
+      <%= link_to root_path, class: "brand", "aria-label": "chat.aibranch.org" do %>
+        <span class="brand-sub" aria-hidden="true">chat</span><span class="brand-dot" aria-hidden="true">.</span><span class="brand-ai" aria-hidden="true">AI</span><span class="brand-branch" aria-hidden="true">branch</span><span class="brand-dot" aria-hidden="true">.</span><span class="brand-tld" aria-hidden="true">org</span>
+      <% end %>
     </div>
     <div class="header-right">
       <%= render partial: "layouts/new_chat_button" %>

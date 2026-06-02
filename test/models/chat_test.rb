@@ -228,11 +228,41 @@ class ChatTest < ActiveSupport::TestCase
     refute called, "the summarizer must not be called for an image-only prompt"
   end
 
-  test "summarize_for_title returns nil when there are no user messages yet" do
+  test "summarize_for_title falls back to the truncated prompt when there are no user messages yet" do
+    # Without a latest PE we can't dispatch to an LLM, but we still need to
+    # return *something* so chat_manager's title filter doesn't hide the chat.
     fake_query = Object.new
     fake_query.define_singleton_method(:call) { |*| raise "should not be called" }
     with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
-      assert_nil @chat.send(:summarize_for_title, "some text", "jwt")
+      assert_equal "some text", @chat.send(:summarize_for_title, "some text", "jwt")
+    end
+  end
+
+  test "summarize_for_title falls back to the truncated prompt when the LLM returns blank" do
+    # Medgemma in particular wraps its response inside <unused94>…<unused95>
+    # sentinels; after stripping there's nothing left, which used to leave
+    # the chat title blank — and chat_manager hides untitled chats from the
+    # sidebar. Verified at the strip layer too.
+    pe, _m = @chat.add_user_message("Diagnose this", "key-1", "medgemma1-5-4b")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) { |*| "<unused94>thought\nreasoning\n<unused95>" }
+
+    with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+      assert_equal "Diagnose this", @chat.send(:summarize_for_title, pe.prompt, "jwt")
+    end
+  end
+
+  test "summarize_for_title falls back to the truncated prompt when the LLM call raises" do
+    pe, _m = @chat.add_user_message("Diagnose this", "key-1", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) { |*| raise StandardError, "boom" }
+
+    with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+      assert_equal "Diagnose this", @chat.send(:summarize_for_title, pe.prompt, "jwt")
     end
   end
 

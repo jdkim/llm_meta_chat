@@ -138,8 +138,14 @@ class Chat < ApplicationRecord
     text_only, _image = extract_attached_image(prompt_text)
     return nil if text_only.blank?
 
+    # Fallback used whenever LLM summarization produces no usable title
+    # (model emitted only reasoning sentinels, returned blank, request
+    # failed, etc.). Without a fallback the chat is hidden from the
+    # sidebar entirely because chat_manager filters on title.present?.
+    fallback_title = text_only.truncate(50)
+
     latest_pe = ordered_by_descending_prompt_executions.first
-    return nil unless latest_pe&.llm_uuid && latest_pe&.model
+    return fallback_title unless latest_pe&.llm_uuid && latest_pe&.model
 
     raw = LlmMetaClient::ServerQuery.new.call(
       jwt_token,
@@ -148,7 +154,10 @@ class Chat < ApplicationRecord
       "No context available.",
       { role: "user", prompt: "Please summarize the following text into a short title (max 50 characters). Respond with only the title, nothing else: #{text_only}" }
     )
-    strip_title_markdown(raw)
+    strip_title_markdown(raw).presence || fallback_title
+  rescue StandardError => e
+    Rails.logger.warn "[Chat#summarize_for_title] LLM call failed, falling back to prompt: #{e.class}: #{e.message}"
+    text_only.truncate(50)
   end
 
   # LLMs frequently wrap titles in markdown emphasis (**bold**, *italic*),

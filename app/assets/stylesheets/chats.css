@@ -952,3 +952,8 @@
 @media (max-width: 420px) {
   .model-grid-columns { grid-template-columns: 1fr; }
 }
+
+/* Local override of prompt_navigator's history.css — drop once the engine
+   ships the same value. Adds breathing room between the "History" heading
+   and the first history card. */
+#history-sidebar .history-stack { margin-top: 20px; }

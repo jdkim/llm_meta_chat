@@ -47,9 +47,12 @@
       <% if @llm_families.present? %>
         <%= render "shared/quick_picks", llm_families: @llm_families, stimulus_controller: "model-picker" %>
 
-        <%= hidden_field_tag :family, "", data: { "model-picker-target": "family" } %>
-        <%= hidden_field_tag :api_key_uuid, "", data: { "model-picker-target": "apiKey" } %>
-        <%= hidden_field_tag :model, "", data: { "model-picker-target": "model" }, required: true %>
+        <%# Pre-populate from the chat's most recent execution so the picker
+            opens on the model the chat was last using rather than the system
+            default. JS treats a non-blank `model` value as the initial pick. %>
+        <%= hidden_field_tag :family, @prompt_execution&.llm_platform.to_s, data: { "model-picker-target": "family" } %>
+        <%= hidden_field_tag :api_key_uuid, @prompt_execution&.llm_uuid.to_s, data: { "model-picker-target": "apiKey" } %>
+        <%= hidden_field_tag :model, @prompt_execution&.model.to_s, data: { "model-picker-target": "model" }, required: true %>
 
         <div class="input-controls" data-controller="input-controls">
           <div class="input-controls-buttons">

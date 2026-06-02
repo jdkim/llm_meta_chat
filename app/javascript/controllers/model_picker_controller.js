@@ -20,6 +20,29 @@ export default class extends Controller {
   static targets = ["family", "apiKey", "model", "supportsVision", "quickPicks"]
 
   connect() {
+    // Continuing-chat path: the server pre-populated hidden fields with the
+    // chat's most recent (family, api_key, model). Honor that so the picker
+    // opens on the same model the chat was last using — otherwise the user
+    // sees no indication of what their next prompt will hit. Falls through
+    // to #pickInitial for new chats (empty fields).
+    if (this.hasModelTarget && this.modelTarget.value) {
+      const match = this.element.querySelector(
+        `[data-model="${CSS.escape(this.modelTarget.value)}"]`
+      )
+      if (match) { this.#clickAsPick(match); return }
+      // The previously-used model is no longer in the visible options
+      // (removed from the catalog, key access lost, etc.). Re-apply from
+      // the hidden-field values directly so the form still submits
+      // cleanly; #ensureQuickPickFor synthesizes a transient pill.
+      this.#applySelection({
+        family:         this.hasFamilyTarget ? this.familyTarget.value : "",
+        apiKeyUuid:     this.hasApiKeyTarget ? this.apiKeyTarget.value : "",
+        model:          this.modelTarget.value,
+        supportsVision: this.modelTarget.dataset.supportsVision === "true",
+        label:          this.modelTarget.value
+      })
+      return
+    }
     this.#pickInitial()
   }
 

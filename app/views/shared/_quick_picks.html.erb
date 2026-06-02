@@ -38,7 +38,7 @@
 
 <%# Always render the container so model-picker can append a transient
     quick-pick when the user picks an off-row model from the grid. %>
-<div class="quick-picks" data-<%= stimulus_controller.tr('-', '_') %>-target="quickPicks">
+<div class="quick-picks" data-<%= stimulus_controller %>-target="quickPicks">
   <% if default_option %>
     <button type="button"
             class="quick-pick-button is-default"

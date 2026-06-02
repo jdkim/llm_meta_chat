@@ -71,6 +71,16 @@
           messageInput.focus();
         }
 
+        // Clear the image-preview box + file input now that the multipart
+        // form has been sent. Doing it in the JS submit handler would empty
+        // the file input before the browser serialized the POST body.
+        const imagePreview = document.querySelector('[data-chats-form-target="imagePreview"]');
+        if (imagePreview) imagePreview.style.display = 'none';
+        const imageThumbnail = document.querySelector('[data-chats-form-target="imageThumbnail"]');
+        if (imageThumbnail) imageThumbnail.src = '';
+        const imageInput = document.querySelector('[data-chats-form-target="imageInput"]');
+        if (imageInput) imageInput.value = '';
+
         // Update submit button state
         const form = document.querySelector('[data-controller="chats-form"]');
         if (form && messageInput) {

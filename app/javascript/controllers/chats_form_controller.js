@@ -113,6 +113,18 @@ export default class extends Controller {
     return Array.from(items).some((it) => it.kind === "file" && it.type.startsWith("image/"))
   }
 
+  // Enter to send, Shift+Enter for a newline — standard chat-UI shortcut.
+  // IME composition (Japanese / Chinese / Korean input) emits Enter to
+  // confirm a candidate; `isComposing` and the `keyCode === 229` fallback
+  // skip submission in that case so users don't lose mid-conversion text.
+  onPromptKeydown(event) {
+    if (event.key !== "Enter") return
+    if (event.shiftKey || event.isComposing || event.keyCode === 229) return
+    if (this.submitTarget.disabled) return
+    event.preventDefault()
+    this.element.requestSubmit(this.submitTarget)
+  }
+
   // Paste-to-attach: screenshots and copied images dropped onto the
   // prompt textarea get routed through the same multipart upload path
   // as the file picker and drag-drop. Falls through silently when the
@@ -171,21 +183,36 @@ export default class extends Controller {
       return
     }
 
+    // Capture the in-preview thumbnail (data URL) so the optimistic bubble
+    // mirrors what the server will eventually render via split_attached_image_html.
+    const imageDataUrl = (this.hasImagePreviewTarget &&
+                           this.imagePreviewTarget.style.display !== "none" &&
+                           this.hasImageThumbnailTarget)
+      ? this.imageThumbnailTarget.src
+      : null
+
     // Add user message to the messages list immediately
-    this.#addUserMessageToDOM(messageContent)
+    this.#addUserMessageToDOM(messageContent, imageDataUrl)
 
     // DON'T clear the input here - let the server response handle it
     // Otherwise the POST will be sent with empty value
+    // (the Turbo Stream response clears the message + image preview after submit).
 
     // Scroll to bottom
     this.#scrollToBottom()
   }
 
-  #addUserMessageToDOM(content) {
+  #addUserMessageToDOM(content, imageDataUrl = null) {
     const messagesList = document.getElementById('messages-list')
     if (!messagesList) return
 
-    // Create message HTML
+    // Create message HTML. When an image is attached, render it as a
+    // thumbnail above the text — matching `_message.html.erb`'s shape so
+    // the optimistic bubble doesn't visually jump when the server's
+    // version replaces it on next render.
+    const imgHtml = imageDataUrl
+      ? `<img src="${this.#escapeAttr(imageDataUrl)}" alt="" class="user-attached-image">`
+      : ""
     const messageDiv = document.createElement('div')
     messageDiv.className = 'message user'
     messageDiv.innerHTML = `
@@ -193,11 +220,17 @@ export default class extends Controller {
         👤 You
       </div>
       <div class="message-content">
+        ${imgHtml}
         <p>${this.#escapeHtml(content)}</p>
       </div>
     `
 
     messagesList.appendChild(messageDiv)
+  }
+
+  // Attribute-safe escape for use inside double-quoted HTML attributes.
+  #escapeAttr(text) {
+    return String(text).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   }
 
   #escapeHtml(text) {

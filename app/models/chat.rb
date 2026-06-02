@@ -52,14 +52,22 @@ class Chat < ApplicationRecord
   # Stream the assistant response from the LLM. Yields each parsed SSE event.
   # Returns the assembled content (with markdown "Tool calls" section appended
   # if tools fired). Caller is responsible for persistence.
+  # Cap on historical images carried into each subsequent turn alongside the
+  # current image. Bigger numbers grow per-request image-token cost linearly;
+  # 2 is enough for "compare with the one I just sent" without runaway cost.
+  HISTORICAL_IMAGE_LIMIT = 2
+
   def stream_assistant_response(prompt_execution, jwt_token, tool_ids: [], generation_settings: {}, &block)
-    last_msg = ordered_messages.last
-    pe = last_msg.prompt_navigator_prompt_execution
-    # Separate any attached image (data-URI markdown at the head of the
-    # prompt) from the text. The image flows as a structured field; the text
-    # goes through the usual prompt path.
+    # Anchor on the explicit `prompt_execution` (the user's just-added PE),
+    # not `ordered_messages.last`. They coincide in a linear chat, but the
+    # explicit PE is what carries the correct `previous` chain when the user
+    # branched from an older point in the history pane — context and
+    # historical images must follow that chain, not the chat's global
+    # chronological order.
+    pe = prompt_execution
     text_prompt, attached_image = extract_attached_image(pe.prompt)
-    prompt = { role: last_msg.role, prompt: text_prompt }
+    prompt = { role: "user", prompt: text_prompt }
+    images_payload = collect_recent_images(pe, current_image: attached_image)
 
     if image_model?(prompt_execution.model)
       image_context = pe.build_context(limit: Rails.configuration.summarize_conversation_count)
@@ -84,10 +92,25 @@ class Chat < ApplicationRecord
         prompt,
         tool_ids: tool_ids,
         generation_settings: generation_settings,
-        image: attached_image,
+        images: images_payload.presence,
         &block
       )
     end
+  end
+
+  # Walks the lineage backwards from `pe.previous`, harvests the most recent
+  # `HISTORICAL_IMAGE_LIMIT` images, then appends `current_image`. Result is
+  # ordered chronologically (oldest first); current turn's image is the last
+  # element. Returns [] when no images are involved.
+  def collect_recent_images(pe, current_image:)
+    historical = []
+    cursor = pe.previous
+    while cursor && historical.size < HISTORICAL_IMAGE_LIMIT
+      _text, img = extract_attached_image(cursor.prompt)
+      historical.unshift(img) if img
+      cursor = cursor.previous
+    end
+    historical + (current_image ? [ current_image ] : [])
   end
 
   # Persist the streamed assistant response. Skips persistence if content is blank.
@@ -199,14 +222,19 @@ class Chat < ApplicationRecord
   end
 
   # Build the (summarized_context, prompt) tuple for an LLM call.
-  # Shared by both the synchronous and streaming paths.
+  # Shared by both the synchronous and streaming paths. Anchors on the
+  # explicit `prompt_execution` so branched chats (new prompt sent from an
+  # older selected history pane entry) walk the correct lineage.
   def build_streaming_context(prompt_execution, jwt_token, with_tools: false)
     llm_options = LlmMetaClient::ServerResource.available_llm_options(jwt_token)
     raise LlmMetaClient::Exceptions::OllamaUnavailableError, "No LLM available" if llm_options.empty?
 
-    last_msg = ordered_messages.last
-    pe = last_msg.prompt_navigator_prompt_execution
-    prompt = { role: last_msg.role, prompt: pe.prompt }
+    pe = prompt_execution
+    # Use the image-stripped prompt text. The actual image bytes flow as a
+    # structured `images:` field on the streaming path; embedding the data
+    # URI here would re-send the same image as ~30k useless text tokens.
+    current_text, _img = extract_attached_image(pe.prompt)
+    prompt = { role: "user", prompt: current_text }
 
     # Image-generation models don't take prior context. Summarizing through
     # an image model would just generate an image as the "summary".
@@ -227,7 +255,7 @@ class Chat < ApplicationRecord
         # Overflow: summarize the older slice, keep recent turns verbatim.
         # Summarization runs on a cheap fixed model, not the user's selected
         # one. Falls back to the user's model if it isn't available.
-        older = context[0...-verbatim_count]
+        older = context[0...-verbatim_count].map { |t| strip_inline_images_in_turn(t) }
         recent = context.last(verbatim_count)
         sum_uuid, sum_model =
           summarization_target(llm_options) || [ prompt_execution.llm_uuid, prompt_execution.model ]
@@ -250,7 +278,23 @@ class Chat < ApplicationRecord
   end
 
   def format_transcript(turns)
-    turns.map { |t| "User: #{t[:prompt]}\nAssistant: #{t[:response]}" }.join("\n\n")
+    turns.map { |t|
+      stripped = strip_inline_images_in_turn(t)
+      "User: #{stripped[:prompt]}\nAssistant: #{stripped[:response]}"
+    }.join("\n\n")
+  end
+
+  # Replace embedded `![](data:image/…;base64,…)` markdown with a short
+  # `[image]` placeholder in a turn-hash. The actual image bytes are sent
+  # separately via the `images:` field; leaving the data URI in the text
+  # would re-send each image as ~30k useless text tokens per subsequent
+  # turn (a 100KB PNG → ~133KB base64 → ~30k tokens at ~4 chars/token).
+  INLINE_DATA_IMAGE = /!\[[^\]]*\]\(data:[^)]+\)/m
+  def strip_inline_images_in_turn(turn)
+    {
+      prompt:   turn[:prompt].to_s.gsub(INLINE_DATA_IMAGE, "[image]"),
+      response: turn[:response].to_s.gsub(INLINE_DATA_IMAGE, "[image]")
+    }
   end
 
   # Pull a single leading `![](data:mime;base64,DATA)` image out of the prompt

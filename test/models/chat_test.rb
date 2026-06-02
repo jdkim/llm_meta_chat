@@ -138,6 +138,153 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal "", @chat.send(:format_transcript, [])
   end
 
+  test "format_transcript replaces inline data-URI image markdown with [image] placeholder" do
+    out = @chat.send(:format_transcript, [
+      { prompt: "![](data:image/png;base64,AAAA) what is this?", response: "An apple." }
+    ])
+    assert_equal "User: [image] what is this?\nAssistant: An apple.", out
+  end
+
+  test "strip_inline_images_in_turn rewrites both prompt and response" do
+    stripped = @chat.send(:strip_inline_images_in_turn,
+      { prompt: "![](data:image/png;base64,AA) text", response: "look at ![](data:image/jpeg;base64,BB)" }
+    )
+    assert_equal "[image] text", stripped[:prompt]
+    assert_equal "look at [image]", stripped[:response]
+  end
+
+  # ----- collect_recent_images (private) ----- #
+
+  test "collect_recent_images returns chronological list capped at HISTORICAL_IMAGE_LIMIT + current" do
+    # Build a 4-turn lineage: image, no-image, image, image — then call from
+    # a hypothetical "next" PE that points to the most recent turn.
+    pe1, _ = @chat.add_user_message("![](data:image/png;base64,IMG1) q1", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe1)
+    pe2, _ = @chat.add_user_message("q2 no image", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe2)
+    pe3, _ = @chat.add_user_message("![](data:image/png;base64,IMG3) q3", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe3)
+    pe4, _ = @chat.add_user_message("![](data:image/png;base64,IMG4) q4", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe4)
+
+    # Stand on a future "current" turn whose previous is pe4. Cap = 2, so we
+    # take pe4 + pe3 from history (IMG3, IMG4 chronologically) and append the
+    # current image last.
+    next_pe = PromptNavigator::PromptExecution.new(prompt: "current", previous: pe4)
+    result = @chat.send(:collect_recent_images, next_pe,
+                        current_image: { mime: "image/png", data_b64: "CUR" })
+
+    assert_equal 3, result.size
+    assert_equal [ "IMG3", "IMG4", "CUR" ], result.map { |i| i[:data_b64] }
+  end
+
+  test "collect_recent_images returns just the current image when history has none" do
+    pe, _ = @chat.add_user_message("hi", "key", "gpt-5")
+    next_pe = PromptNavigator::PromptExecution.new(prompt: "next", previous: pe)
+    result = @chat.send(:collect_recent_images, next_pe,
+                        current_image: { mime: "image/png", data_b64: "CUR" })
+    assert_equal [ "CUR" ], result.map { |i| i[:data_b64] }
+  end
+
+  test "collect_recent_images returns empty list when no images anywhere" do
+    pe, _ = @chat.add_user_message("hi", "key", "gpt-5")
+    next_pe = PromptNavigator::PromptExecution.new(prompt: "next", previous: pe)
+    assert_empty @chat.send(:collect_recent_images, next_pe, current_image: nil)
+  end
+
+  test "collect_recent_images follows the branch chain, not the chat's global chronology" do
+    # Trunk: text-only → image — chronologically present in the chat but
+    # NOT on the branch we'll send from.
+    trunk_a, _ = @chat.add_user_message("trunk text", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: trunk_a)
+    trunk_b, _ = @chat.add_user_message("![](data:image/png;base64,TRUNK) trunk picture", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: trunk_b)
+
+    # Branch off trunk_a (the FIRST trunk PE), with one image.
+    branch, _ = @chat.add_user_message(
+      "![](data:image/png;base64,BRANCH) branch picture",
+      "key", "gpt-5",
+      trunk_a.execution_id
+    )
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: branch)
+
+    # New prompt sent from the branch tip — its `previous` is `branch`.
+    next_pe = PromptNavigator::PromptExecution.new(prompt: "follow-up on branch", previous: branch)
+    result = @chat.send(:collect_recent_images, next_pe,
+                        current_image: { mime: "image/png", data_b64: "CUR" })
+
+    # Should pick up only the branch's image + current. trunk_b's image is on
+    # a different branch and must not leak in.
+    data = result.map { |i| i[:data_b64] }
+    assert_equal [ "BRANCH", "CUR" ], data
+    refute_includes data, "TRUNK"
+  end
+
+  test "collect_recent_images caps at HISTORICAL_IMAGE_LIMIT on a branched lineage (most recent wins)" do
+    # Off-branch trunk image — must be invisible.
+    trunk_a, _ = @chat.add_user_message("![](data:image/png;base64,TRUNK) trunk", "key", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: trunk_a)
+
+    # Build a branch off trunk_a with four image-bearing PEs in a row:
+    # R (oldest on branch) → X → Y → Z (newest on branch).
+    img_r, _ = @chat.add_user_message("![](data:image/png;base64,IMG_R) r", "key", "gpt-5", trunk_a.execution_id)
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: img_r)
+    img_x, _ = @chat.add_user_message("![](data:image/png;base64,IMG_X) x", "key", "gpt-5", img_r.execution_id)
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: img_x)
+    img_y, _ = @chat.add_user_message("![](data:image/png;base64,IMG_Y) y", "key", "gpt-5", img_x.execution_id)
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: img_y)
+    img_z, _ = @chat.add_user_message("![](data:image/png;base64,IMG_Z) z", "key", "gpt-5", img_y.execution_id)
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: img_z)
+
+    # New PE sent from img_z — walks back along its branch chain.
+    next_pe = PromptNavigator::PromptExecution.new(prompt: "now", previous: img_z)
+    result = @chat.send(:collect_recent_images, next_pe,
+                        current_image: { mime: "image/png", data_b64: "CUR" })
+
+    # HISTORICAL_IMAGE_LIMIT = 2 — keep the two CLOSEST to current (Y and Z),
+    # not the oldest two (R and X). Trunk's image must not leak in.
+    data = result.map { |i| i[:data_b64] }
+    assert_equal [ "IMG_Y", "IMG_Z", "CUR" ], data
+    refute_includes data, "IMG_R"
+    refute_includes data, "IMG_X"
+    refute_includes data, "TRUNK"
+  end
+
+  # ----- build_streaming_context branch awareness ----- #
+
+  test "build_streaming_context formats only the branch's lineage, not sibling-branch turns" do
+    # Trunk-A → Trunk-B (sibling branch off Trunk-A), and Trunk-A → Branch-C
+    # (the branch we'll send from).
+    trunk_a, _ = @chat.add_user_message("trunk-a question", "key", "gpt-5")
+    trunk_a.update!(response: "trunk-a answer")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: trunk_a)
+
+    trunk_b, _ = @chat.add_user_message("trunk-b sibling talk", "key", "gpt-5", trunk_a.execution_id)
+    trunk_b.update!(response: "trunk-b answer")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: trunk_b)
+
+    branch_c, _ = @chat.add_user_message("branch-c follow-up", "key", "gpt-5", trunk_a.execution_id)
+    branch_c.update!(response: "branch-c answer")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: branch_c)
+
+    # New prompt sent from the branch tip (branch_c). build_streaming_context
+    # should anchor on this PE and walk its `previous` chain — visiting
+    # branch_c → trunk_a only, never trunk_b.
+    next_pe, _ = @chat.add_user_message("next on branch", "key", "gpt-5", branch_c.execution_id)
+
+    summarized_context = nil
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+              [ { uuid: "key", llm_type: "openai" } ]) do
+      summarized_context, _ = @chat.send(:build_streaming_context, next_pe, "jwt")
+    end
+
+    # The branch's turns appear in the transcript; the sibling's do not.
+    assert_includes summarized_context, "branch-c follow-up"
+    assert_includes summarized_context, "trunk-a question"
+    refute_includes summarized_context, "trunk-b sibling talk"
+    refute_includes summarized_context, "trunk-b answer"
+  end
+
   # ----- summarization_target (private) ----- #
 
   test "summarization_target returns [ollama_uuid, SUMMARIZATION_MODEL] when ollama+the model are available" do

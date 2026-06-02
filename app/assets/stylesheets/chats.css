@@ -957,3 +957,70 @@
    ships the same value. Adds breathing room between the "History" heading
    and the first history card. */
 #history-sidebar .history-stack { margin-top: 20px; }
+
+/* === Download / Copy overlay for assistant-generated assets ============ */
+/* Markup emitted by ApplicationHelper::AssistantResponseRenderer for
+   images and copyable code blocks (json / csv). */
+.response-asset {
+  position: relative;
+  margin: 8px 0;
+}
+
+.response-asset-image {
+  display: inline-block;
+}
+
+.response-asset-code pre {
+  margin: 0;
+}
+
+.asset-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  z-index: 1;
+}
+
+.response-asset:hover .asset-actions,
+.response-asset:focus-within .asset-actions {
+  opacity: 1;
+}
+
+.asset-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background-color: rgba(255, 255, 255, 0.92);
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background-color: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  i { font-size: 13px; }
+}
+
+/* When the overlay sits on top of a dark code block, give the button
+   a slightly tinted background instead of pure white for contrast. */
+.response-asset-code .asset-action {
+  background-color: rgba(249, 250, 251, 0.95);
+}

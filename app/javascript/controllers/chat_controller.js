@@ -10,6 +10,20 @@ export default class extends Controller {
   connect() {
     this.lastIndex = null
     this.#refresh()
+    this.#scrollActiveIntoView()
+  }
+
+  // When the sidebar re-renders on chat navigation, the active card may
+  // be far below the visible scroll viewport. Center it vertically so
+  // the user can see surrounding chats too — `block: "nearest"` would
+  // park it at the bottom edge, which makes orientation harder. The
+  // browser clamps to the scrollable extent, so cards near the top
+  // simply land at the top instead of being forced down. "instant"
+  // avoids a jarring scroll animation on every page load.
+  #scrollActiveIntoView() {
+    const active = this.element.querySelector(".chat-card.is-active")
+    if (!active) return
+    active.scrollIntoView({ block: "center", behavior: "instant" })
   }
 
   toggle(event) {

@@ -958,6 +958,21 @@
    and the first history card. */
 #history-sidebar .history-stack { margin-top: 20px; }
 
+/* Local override of chat_manager's chat.css — drop once the engine ships
+   the same rule. Pins the chat-list toolbar (heading + bulk actions) to
+   the top of the scrollable sidebar so it stays visible when the list
+   is long. The negative top/left/right margins extend the toolbar over
+   the sidebar's 8px padding so scrolling cards can't peek through the
+   gap; equal padding keeps the toolbar's content in its natural place. */
+#chat-sidebar .chat-list-toolbar {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff;
+  z-index: 2;
+  margin: -8px -8px 6px;
+  padding: 8px 8px 0;
+}
+
 /* === Download / Copy overlay for assistant-generated assets ============ */
 /* Markup emitted by ApplicationHelper::AssistantResponseRenderer for
    images and copyable code blocks (json / csv). */

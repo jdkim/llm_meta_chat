@@ -49,10 +49,10 @@ gem "httparty"
 
 gem "redcarpet"
 
-gem "llm_meta_client", "~> 1.4", path: "../llm_meta_client"
-gem "chat_manager", "~> 1.1", path: "../chat_manager"
+gem "llm_meta_client", "~> 1.5"
+gem "chat_manager", "~> 1.2"
 
-gem "prompt_navigator", "~> 2.0", path: "../prompt_manager"
+gem "prompt_navigator", "~> 2.1"
 
 group :development, :test do
   # Load environment variables from .env files

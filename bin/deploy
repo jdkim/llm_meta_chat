@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Production deploy for chat.aibranch.org.
+# Usage:
+#   bin/deploy                      # pull, bundle, migrate, precompile, restart
+#   bin/deploy --no-pull            # local changes only (skip git pull)
+#   bin/deploy --skip-restart       # build everything but don't bounce the service
+#
+# Idempotent. Safe to re-run.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+PULL=true
+RESTART=true
+for arg in "$@"; do
+  case "$arg" in
+    --no-pull)      PULL=false ;;
+    --skip-restart) RESTART=false ;;
+    *) echo "unknown flag: $arg" >&2; exit 2 ;;
+  esac
+done
+
+# Bring rvm + the right ruby into PATH even when run from cron / systemd.
+# RVM's loader references variables that trip `set -u`; relax briefly
+# while sourcing it, then re-enable.
+if [ -s "$HOME/.rvm/scripts/rvm" ]; then
+  set +u
+  source "$HOME/.rvm/scripts/rvm"
+  set -u
+fi
+
+# Load production env vars (RAILS_MASTER_KEY, DATABASE_URL, GOOGLE_*, …)
+# so `bin/rails` commands below boot Rails in the same env the systemd
+# service does. dotenv-rails is dev-only in this app, so we have to do
+# this explicitly rather than rely on auto-loading.
+if [ -f .env.production ]; then
+  set -a
+  source .env.production
+  set +a
+fi
+
+if [ "$PULL" = true ]; then
+  echo "==> git pull"
+  git pull --ff-only
+fi
+
+echo "==> bundle install (deployment)"
+bundle config set deployment "true"
+bundle config set without "development test"
+bundle install --quiet
+
+echo "==> db:migrate (production)"
+RAILS_ENV=production bin/rails db:migrate
+
+echo "==> assets:precompile"
+RAILS_ENV=production bin/rails assets:precompile
+
+if [ "$RESTART" = true ]; then
+  echo "==> systemctl restart llm_meta_chat"
+  sudo systemctl restart llm_meta_chat
+  sleep 2
+  systemctl is-active llm_meta_chat
+fi
+
+echo "==> done."

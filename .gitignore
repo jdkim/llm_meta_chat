@@ -9,6 +9,10 @@
 
 # Ignore all environment files.
 /.env*
+!/.env.production.example
+
+# Deploy script installs gems into vendor/bundle (deployment mode).
+/vendor/bundle/
 
 # Ignore all logfiles and tempfiles.
 /log/*

@@ -1,0 +1,30 @@
+[Unit]
+Description=llm_meta_chat (chat.aibranch.org) — Rails production puma
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pubann
+Group=pubann
+WorkingDirectory=/home/pubann/llm_meta/llm_meta_chat
+# Secrets + env (RAILS_MASTER_KEY, DATABASE_URL, GOOGLE_*, LLM_SERVICE_BASE_URL, …).
+# Mode 0600, owned by pubann. See PRODUCTION.md.
+EnvironmentFile=/home/pubann/llm_meta/llm_meta_chat/.env.production
+
+# Use rvm's wrapped puma binary so this works without an interactive shell.
+# `bash -lc` pulls in rvm so the right ruby/gemset is active.
+ExecStart=/bin/bash -lc 'cd /home/pubann/llm_meta/llm_meta_chat && bundle exec puma -C config/puma.rb -e production -b tcp://127.0.0.1:${PORT:-3001}'
+
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Write logs to the app's log dir (nginx already reads access/error from
+# there for its own request log; Rails writes its log to production.log).
+StandardOutput=append:/home/pubann/llm_meta/llm_meta_chat/log/puma.log
+StandardError=append:/home/pubann/llm_meta/llm_meta_chat/log/puma.err.log
+
+[Install]
+WantedBy=multi-user.target

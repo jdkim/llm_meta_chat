@@ -27,6 +27,12 @@ done
 if [ -s "$HOME/.rvm/scripts/rvm" ]; then
   set +u
   source "$HOME/.rvm/scripts/rvm"
+  # RVM's default alias may not match this repo's .ruby-version
+  # (e.g. system default 3.2.2 vs repo 3.4.9). Switch explicitly so
+  # `bundle install` resolves against the right Ruby.
+  if [ -f .ruby-version ]; then
+    rvm use "$(cat .ruby-version)" >/dev/null
+  fi
   set -u
 fi
 

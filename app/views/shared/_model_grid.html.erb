@@ -76,10 +76,11 @@
   <p class="model-grid-footer">
     <i class="bi bi-info-circle"></i>
     <% if user_signed_in? %>
-      <%= link_to "Manage API keys + favorites + default model",
-                  "#{Rails.configuration.llm_service_base_url}/models",
+      Access
+      <%= link_to "hub.AIbranch",
+                  "#{Rails.configuration.llm_service_public_url}/sso?return_to=/models",
                   target: "_blank", rel: "noopener" %>
-      to see more providers and customize this picker.
+      to unlock more models by registering your API keys.
     <% else %>
       Sign in to add API keys, favorites, and set a personal default model.
     <% end %>

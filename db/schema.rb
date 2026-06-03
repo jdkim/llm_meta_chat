@@ -11,55 +11,58 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2026_05_31_150709) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "chats", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "session_id"
-    t.string "title"
-    t.datetime "updated_at", null: false
-    t.integer "user_id"
-    t.string "uuid", null: false
-    t.index ["session_id"], name: "index_chats_on_session_id"
-    t.index ["user_id"], name: "index_chats_on_user_id"
+    t.timestamptz "created_at"
+    t.text "session_id"
+    t.text "title"
+    t.timestamptz "updated_at"
+    t.bigint "user_id"
+    t.text "uuid"
+    t.index ["session_id"], name: "idx_2679977_index_chats_on_session_id"
+    t.index ["user_id"], name: "idx_2679977_index_chats_on_user_id"
   end
 
   create_table "messages", force: :cascade do |t|
-    t.integer "chat_id", null: false
-    t.datetime "created_at", null: false
-    t.integer "prompt_navigator_prompt_execution_id"
-    t.string "role"
-    t.datetime "updated_at", null: false
-    t.index ["chat_id"], name: "index_messages_on_chat_id"
-    t.index ["prompt_navigator_prompt_execution_id"], name: "index_messages_on_prompt_navigator_prompt_execution_id"
+    t.bigint "chat_id"
+    t.timestamptz "created_at"
+    t.bigint "prompt_navigator_prompt_execution_id"
+    t.text "role"
+    t.timestamptz "updated_at"
+    t.index ["chat_id"], name: "idx_2679984_index_messages_on_chat_id"
+    t.index ["prompt_navigator_prompt_execution_id"], name: "idx_2679984_index_messages_on_prompt_navigator_prompt_execution"
   end
 
   create_table "prompt_navigator_prompt_executions", force: :cascade do |t|
-    t.string "configuration"
-    t.datetime "created_at", null: false
-    t.string "execution_id"
-    t.string "llm_platform"
-    t.string "llm_uuid"
-    t.string "model"
-    t.integer "previous_id"
+    t.text "configuration"
+    t.timestamptz "created_at"
+    t.text "execution_id"
+    t.text "llm_platform"
+    t.text "llm_uuid"
+    t.text "model"
+    t.bigint "previous_id"
     t.text "prompt"
     t.text "response"
-    t.datetime "updated_at", null: false
-    t.index ["previous_id"], name: "index_prompt_navigator_prompt_executions_on_previous_id"
+    t.timestamptz "updated_at"
+    t.index ["previous_id"], name: "idx_2679991_index_prompt_navigator_prompt_executions_on_previou"
   end
 
   create_table "users", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "email", null: false
-    t.string "google_id"
+    t.timestamptz "created_at"
+    t.text "email"
+    t.text "google_id"
     t.text "id_token"
-    t.datetime "id_token_expires_at"
+    t.timestamptz "id_token_expires_at"
     t.text "refresh_token"
-    t.datetime "updated_at", null: false
-    t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["google_id"], name: "index_users_on_google_id", unique: true
+    t.timestamptz "updated_at"
+    t.index ["email"], name: "idx_2679970_index_users_on_email", unique: true
+    t.index ["google_id"], name: "idx_2679970_index_users_on_google_id", unique: true
   end
 
-  add_foreign_key "chats", "users"
-  add_foreign_key "messages", "chats"
-  add_foreign_key "messages", "prompt_navigator_prompt_executions"
-  add_foreign_key "prompt_navigator_prompt_executions", "prompt_navigator_prompt_executions", column: "previous_id"
+  add_foreign_key "chats", "users", name: "chats_user_id_fkey"
+  add_foreign_key "messages", "chats", name: "messages_chat_id_fkey"
+  add_foreign_key "messages", "prompt_navigator_prompt_executions", name: "messages_prompt_navigator_prompt_execution_id_fkey"
+  add_foreign_key "prompt_navigator_prompt_executions", "prompt_navigator_prompt_executions", column: "previous_id", name: "prompt_navigator_prompt_executions_previous_id_fkey"
 end

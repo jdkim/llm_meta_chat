@@ -1,41 +1,35 @@
-# SQLite. Versions 3.8.0 and up are supported.
-#   gem install sqlite3
+# PostgreSQL. Versions 12 and up are supported.
 #
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem "sqlite3"
+#   Install the pg driver:    gem install pg
+#   In the Gemfile:            gem "pg"
+#
+# Solid Queue / Cache / Cable are folded into the primary database for
+# now; if their volume grows, split them into their own Postgres DBs
+# and re-introduce a multi-DB shape (see Rails 8.1 defaults).
 #
 default: &default
-  adapter: sqlite3
-  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  timeout: 5000
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  # Unix-socket Postgres on the same host: leave host empty so libpq
+  # uses /var/run/postgresql/.s.PGSQL.5432 with peer auth. For TCP,
+  # set DATABASE_URL or DB_HOST/DB_PORT/DB_USER/DB_PASSWORD.
+  host: <%= ENV.fetch("DB_HOST", "") %>
+  port: <%= ENV.fetch("DB_PORT", 5432) %>
+  username: <%= ENV.fetch("DB_USER", ENV.fetch("USER", "postgres")) %>
+  password: <%= ENV.fetch("DB_PASSWORD", "") %>
 
 development:
   <<: *default
-  database: storage/development.sqlite3
+  database: llm_meta_chat_development
 
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
-# Do not set this db to the same as development or production.
 test:
   <<: *default
-  database: storage/test.sqlite3
+  database: llm_meta_chat_test
 
-
-# Store production database in the storage/ directory, which by default
-# is mounted as a persistent Docker volume in config/deploy.yml.
+# In Kamal-deployed production, DATABASE_URL is injected by the
+# postgres accessory and overrides the keys above.
 production:
-  primary:
-    <<: *default
-    database: storage/production.sqlite3
-  cache:
-    <<: *default
-    database: storage/production_cache.sqlite3
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *default
-    database: storage/production_queue.sqlite3
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *default
-    database: storage/production_cable.sqlite3
-    migrations_paths: db/cable_migrate
+  <<: *default
+  database: llm_meta_chat_production
+  url: <%= ENV.fetch("DATABASE_URL", nil) %>

@@ -25,10 +25,13 @@ Rails.application.configure do
   config.active_storage.service = :local
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  # config.assume_ssl = true
+  # Required because nginx terminates TLS and forwards plain HTTP to puma —
+  # without this, Rails generates http:// form URLs and non-Secure cookies,
+  # which causes CSRF failures (422) on cross-protocol form submissions.
+  config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
+  config.force_ssl = true
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
@@ -47,11 +50,16 @@ Rails.application.configure do
   config.active_support.report_deprecations = false
 
   # Replace the default in-process memory cache store with a durable alternative.
+  # Solid Cache's database mapping is driven by config/cache.yml — the
+  # production block there omits `database:` so it falls back to the
+  # primary ActiveRecord connection.
   config.cache_store = :solid_cache_store
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue
-  config.solid_queue.connects_to = { database: { writing: :queue } }
+  # Solid Queue is folded into the primary Postgres database for now;
+  # to split it out, add a `queue:` entry in database.yml and re-add
+  # `config.solid_queue.connects_to = { database: { writing: :queue } }`.
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.

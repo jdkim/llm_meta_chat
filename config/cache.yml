@@ -12,5 +12,8 @@ test:
   <<: *default
 
 production:
-  database: cache
+  # No `database:` key — falls back to the primary ActiveRecord
+  # connection so Solid Cache tables live in the same Postgres database
+  # as the app. Re-add `database: cache` and a `cache:` entry in
+  # database.yml if cache volume warrants a split.
   <<: *default

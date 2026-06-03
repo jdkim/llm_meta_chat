@@ -14,6 +14,11 @@
             <i class="fa-solid fa-chevron-down"></i>
           </button>
           <div popover="auto" id="user-menu-popover" class="user-popover-menu">
+            <% if current_user.super_user? %>
+              <%= link_to "/admin", class: "popover-logout-button" do %>
+                <i class="fa-solid fa-gauge-high"></i> Admin
+              <% end %>
+            <% end %>
             <%= form_with url: user_logout_path, method: :post, local: true, data: { turbo: false } do |form| %>
               <%= button_tag type: "submit", class: "popover-logout-button" do %>
                 <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign out

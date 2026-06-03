@@ -77,4 +77,16 @@ class User < ApplicationRecord
   def needs_reauth?
     jwt_token.nil?
   end
+
+  # True if this user's email is listed in the SUPER_USER_EMAILS env
+  # (comma-separated). Cheap config-driven authorization — no DB
+  # column, no admin UI required to add/remove super users; just edit
+  # the env file and restart.
+  def super_user?
+    self.class.super_user_emails.include?(email.to_s.downcase)
+  end
+
+  def self.super_user_emails
+    ENV.fetch("SUPER_USER_EMAILS", "").split(",").map { |e| e.strip.downcase }.reject(&:empty?)
+  end
 end

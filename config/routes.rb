@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   root "chats#new"
 
+  # Super-user combined dashboard (chat + hub stats). Gated by
+  # User#super_user? — non-super-users get 404.
+  get "/admin", to: "admin#index"
+
   resources :chats, only: [ :new, :create, :show, :destroy ] do
     collection do
       delete :clear

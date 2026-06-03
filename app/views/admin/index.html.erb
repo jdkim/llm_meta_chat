@@ -1,0 +1,113 @@
+<% content_for :title, "Admin · chat.AIbranch" %>
+
+<div class="admin-page">
+  <header class="admin-header">
+    <h1>Super User Dashboard</h1>
+    <p class="admin-subhead">
+      Snapshot: <%= @chat_stats[:generated_at] %>
+      &middot; signed in as <strong><%= current_user.email %></strong>
+    </p>
+  </header>
+
+  <%# Chat-side stats %>
+  <section class="admin-section">
+    <h2><i class="bi bi-chat-dots"></i> chat.AIbranch</h2>
+
+    <div class="admin-cards">
+      <% [
+        [ "Users",             @chat_stats.dig(:users, :total) ],
+        [ "With refresh token", @chat_stats.dig(:users, :with_refresh_token) ],
+        [ "Total chats",       @chat_stats.dig(:chats, :total) ],
+        [ "Titled chats",      @chat_stats.dig(:chats, :titled) ],
+        [ "Anonymous chats",   @chat_stats.dig(:chats, :anonymous) ],
+        [ "Messages",          @chat_stats.dig(:messages, :total) ],
+        [ "Prompt executions", @chat_stats.dig(:executions, :total) ],
+        [ "7-day signups",     @chat_stats.dig(:users, :recent_signups_7d) ]
+      ].each do |label, value| %>
+        <div class="admin-card">
+          <div class="admin-card-label"><%= label %></div>
+          <div class="admin-card-value"><%= value %></div>
+        </div>
+      <% end %>
+    </div>
+
+    <h3>Top models used</h3>
+    <% top_models = @chat_stats.dig(:executions, :top_models_used) %>
+    <% if top_models.blank? %>
+      <p class="admin-empty">No prompt executions yet.</p>
+    <% else %>
+      <table class="admin-table">
+        <thead><tr><th>Model</th><th>Uses</th></tr></thead>
+        <tbody>
+          <% top_models.each do |model, n| %>
+            <tr><td><code><%= model %></code></td><td><%= n %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <h3>Recent signups</h3>
+    <table class="admin-table">
+      <thead><tr><th>Email</th><th>Joined</th></tr></thead>
+      <tbody>
+        <% @chat_stats.dig(:users, :recent).each do |email, joined_at| %>
+          <tr><td><%= email %></td><td><%= joined_at.strftime("%Y-%m-%d %H:%M") %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </section>
+
+  <%# Hub-side stats (fetched via JSON API) %>
+  <section class="admin-section">
+    <h2><i class="bi bi-cloud"></i> hub.AIbranch</h2>
+
+    <% if @hub_stats["error"] %>
+      <p class="admin-error">
+        Couldn't reach hub: <%= @hub_stats["error"] %>
+      </p>
+    <% else %>
+      <div class="admin-cards">
+        <% [
+          [ "Users",          @hub_stats.dig("users", "total") ],
+          [ "With API keys",  @hub_stats.dig("users", "with_api_keys") ],
+          [ "API keys total", @hub_stats.dig("llm_api_keys", "total") ],
+          [ "MCP servers",    @hub_stats.dig("mcp", "servers_total") ],
+          [ "Public MCP",     @hub_stats.dig("mcp", "servers_public") ],
+          [ "MCP tools",      @hub_stats.dig("mcp", "tools_total") ],
+          [ "With default",   @hub_stats.dig("users", "with_default_model") ],
+          [ "7-day signups",  @hub_stats.dig("users", "recent_signups_7d") ]
+        ].each do |label, value| %>
+          <div class="admin-card">
+            <div class="admin-card-label"><%= label %></div>
+            <div class="admin-card-value"><%= value || "—" %></div>
+          </div>
+        <% end %>
+      </div>
+
+      <h3>API keys by provider</h3>
+      <table class="admin-table">
+        <thead><tr><th>Provider</th><th>Count</th></tr></thead>
+        <tbody>
+          <% (@hub_stats.dig("llm_api_keys", "by_provider") || {}).sort_by { |_, n| -n }.each do |provider, n| %>
+            <tr><td><%= provider %></td><td><%= n %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <h3>Top favorited models</h3>
+      <% top_fav = @hub_stats.dig("favorites", "top_favorited_models") %>
+      <% if top_fav.blank? %>
+        <p class="admin-empty">No favorites yet.</p>
+      <% else %>
+        <table class="admin-table">
+          <thead><tr><th>Model</th><th>Users</th></tr></thead>
+          <tbody>
+            <% top_fav.each do |model, n| %>
+              <tr><td><code><%= model %></code></td><td><%= n %></td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    <% end %>
+  </section>
+</div>

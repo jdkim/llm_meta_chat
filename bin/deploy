@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Production deploy for chat.aibranch.org.
+# Production build step for chat.aibranch.org. Runs as the app user
+# (no sudo). The systemd restart is performed separately by an
+# operator with sudo — this script only prepares the tree.
+#
 # Usage:
-#   bin/deploy                      # pull, bundle, migrate, precompile, restart
+#   bin/deploy                      # pull, bundle, migrate, precompile
 #   bin/deploy --no-pull            # local changes only (skip git pull)
-#   bin/deploy --skip-restart       # build everything but don't bounce the service
 #
 # Idempotent. Safe to re-run.
 
@@ -12,11 +14,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PULL=true
-RESTART=true
 for arg in "$@"; do
   case "$arg" in
-    --no-pull)      PULL=false ;;
-    --skip-restart) RESTART=false ;;
+    --no-pull) PULL=false ;;
     *) echo "unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
@@ -62,11 +62,4 @@ RAILS_ENV=production bin/rails db:migrate
 echo "==> assets:precompile"
 RAILS_ENV=production bin/rails assets:precompile
 
-if [ "$RESTART" = true ]; then
-  echo "==> systemctl restart llm_meta_chat"
-  sudo systemctl restart llm_meta_chat
-  sleep 2
-  systemctl is-active llm_meta_chat
-fi
-
-echo "==> done."
+echo "==> build done. Ask an operator with sudo to:  sudo systemctl restart llm_meta_chat"

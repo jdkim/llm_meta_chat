@@ -64,7 +64,7 @@ class ChatTest < ActiveSupport::TestCase
     assert_includes pe.prompt, "describe it"
   end
 
-  # ----- ordered_messages + ordered_by_descending_prompt_executions ----- #
+  # ----- ordered_messages + ordered_prompt_executions ----- #
 
   test "ordered_messages returns messages in created_at ascending order" do
     pe1, m1 = @chat.add_user_message("first", "k", "gpt-5")
@@ -74,14 +74,14 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal [ m1.id, m2.id ], ordered.map(&:id)
   end
 
-  test "ordered_by_descending_prompt_executions returns only user-role PEs, newest first" do
+  test "ordered_prompt_executions returns only user-role PEs, oldest first" do
     pe1, m1 = @chat.add_user_message("first", "k", "gpt-5")
     # Manually add an assistant message — shouldn't appear in this list.
     @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe1)
     pe2, _m2 = @chat.add_user_message("second", "k", "gpt-5")
 
-    pes = @chat.ordered_by_descending_prompt_executions
-    assert_equal [ pe2.id, pe1.id ], pes.map(&:id)
+    pes = @chat.ordered_prompt_executions
+    assert_equal [ pe1.id, pe2.id ], pes.map(&:id)
   end
 
   # ----- extract_attached_image (private) ----- #

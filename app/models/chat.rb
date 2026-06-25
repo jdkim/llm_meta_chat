@@ -134,11 +134,11 @@ class Chat < ApplicationRecord
       .order(:created_at)
   end
 
-  def ordered_by_descending_prompt_executions
+  def ordered_prompt_executions
     messages
       .where(role: "user")
       .includes(:prompt_navigator_prompt_execution)
-      .order(created_at: :desc)
+      .order(:created_at)
       .to_a
       .select { |msg| msg.prompt_navigator_prompt_execution }
       .map(&:prompt_navigator_prompt_execution)
@@ -167,7 +167,7 @@ class Chat < ApplicationRecord
     # sidebar entirely because chat_manager filters on title.present?.
     fallback_title = text_only.truncate(50)
 
-    latest_pe = ordered_by_descending_prompt_executions.first
+    latest_pe = ordered_prompt_executions.last
     return fallback_title unless latest_pe&.llm_uuid && latest_pe&.model
 
     raw = LlmMetaClient::ServerQuery.new.call(

@@ -15,14 +15,14 @@ class ChatsController < ApplicationController
     @messages = @chat.ordered_messages
 
     # Initialize history
-    initialize_history @chat.ordered_by_descending_prompt_executions
+    initialize_history @chat.ordered_prompt_executions
 
     # Get LLM options available for users
     jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
 
     # Set active UUID for history sidebar highlighting
-    @prompt_execution = @chat.ordered_by_descending_prompt_executions.first
+    @prompt_execution = @chat.ordered_prompt_executions.last
     set_active_message_uuid(@prompt_execution&.execution_id)
 
     render "chats/edit"
@@ -66,7 +66,7 @@ class ChatsController < ApplicationController
     @messages = @chat&.ordered_messages || []
 
     # initialize history for the chat
-    initialize_history @chat&.ordered_by_descending_prompt_executions
+    initialize_history @chat&.ordered_prompt_executions
 
     if params[:message].present?
       # Validate generation settings before proceeding (raises if invalid).
@@ -167,7 +167,7 @@ class ChatsController < ApplicationController
     add_chat @chat
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat&.ordered_messages || []
-    initialize_history @chat&.ordered_by_descending_prompt_executions
+    initialize_history @chat&.ordered_prompt_executions
 
     if params[:message].present?
       begin

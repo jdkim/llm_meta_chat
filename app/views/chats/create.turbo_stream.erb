@@ -38,17 +38,12 @@
   <%= turbo_stream.replace "history-sidebar" do %>
     <div id="history-sidebar">
       <h2>History</h2>
+      <% history = @chat&.ordered_prompt_executions || [] %>
       <div class="history-stack" id="history-stack" data-controller="history">
-        <%= render 'prompt_navigator/history_card', locals: {
-          ann: @prompt_execution,
-          next_ann: (@chat&.ordered_by_descending_prompt_executions || [])[1],
-          is_active: @prompt_execution.execution_id == @active_message_uuid,
-          card_path: ->(uuid) { prompt_path(uuid) }
-        } %>
-        <% (@chat&.ordered_by_descending_prompt_executions || []).drop(1).each_with_index do |ann, idx| %>
+        <% history.each_with_index do |ann, idx| %>
           <%= render 'prompt_navigator/history_card', locals: {
             ann: ann,
-            next_ann: @chat.ordered_by_descending_prompt_executions[idx + 2],
+            next_ann: history[idx + 1],
             is_active: ann.execution_id == @active_message_uuid,
             card_path: ->(uuid) { prompt_path(uuid) }
           } %>

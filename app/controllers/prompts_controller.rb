@@ -13,7 +13,7 @@ class PromptsController < ApplicationController
     initialize_chat current_user&.chats
 
     # Initialize history
-    initialize_history @chat.ordered_by_descending_prompt_executions
+    initialize_history @chat.ordered_prompt_executions
 
     # Get LLM options available for users
     jwt_token = current_user.jwt_token if user_signed_in?

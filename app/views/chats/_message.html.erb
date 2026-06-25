@@ -3,7 +3,8 @@
     <% if message.role == 'user' %>
       👤 You
     <% else %>
-      🤖 <%= message.prompt_navigator_prompt_execution.llm_platform&.capitalize || 'LLM' %>
+      <% pe = message.prompt_navigator_prompt_execution %>
+      🤖 <%= pe&.llm_platform.present? ? PromptNavigator.label_for(platform: pe.llm_platform, model: pe.model) : 'LLM' %>
     <% end %>
   </div>
   <div class="message-content">

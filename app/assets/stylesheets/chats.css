@@ -258,9 +258,9 @@
   }
 }
 
-.message.user .message-content {
-  white-space: pre-wrap;
-}
+/* simple_format() handles user-typed newlines (→ <br>/<p>); no need
+   for pre-wrap, which would also render the template's surrounding
+   indentation as visible whitespace inside the bubble. */
 
 .chat-input-container {
   background-color: white;

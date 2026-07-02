@@ -200,6 +200,13 @@ export default class extends Controller {
     this.completed = true
     this.#foldTransientSections()
     this.#close()
+    // Once the stream is truly done, make the DOM node inert so Turbo's
+    // page cache (or a bfcache restore) doesn't re-mount this controller
+    // on back-navigation and open a duplicate EventSource against the
+    // same execution_id. Without this the server was re-running the
+    // whole LLM call on every navigate-back.
+    this.element.removeAttribute("data-controller")
+    this.element.removeAttribute("data-message-stream-url-value")
   }
 
   // User clicked the cancel button. Closing the EventSource is enough to

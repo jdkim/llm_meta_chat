@@ -113,9 +113,16 @@ class Chat < ApplicationRecord
     historical + (current_image ? [ current_image ] : [])
   end
 
-  # Persist the streamed assistant response. Skips persistence if content is blank.
+  # Persist the streamed assistant response. Skips persistence if content is blank
+  # or if this PromptExecution already has an assistant Message — idempotency
+  # guard so a mid-flight ClientDisconnected during post-stream work (e.g.
+  # title generation) doesn't cause the ChatStreamsController's rescue path to
+  # persist a second row for a stream that already completed.
   def finalize_streamed_response(prompt_execution, content, jwt_token)
     return nil if content.blank?
+
+    existing = messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: prompt_execution.id)
+    return existing if existing
 
     prompt_execution.update!(
       llm_platform: prompt_execution.llm_platform.presence || resolve_llm_type(prompt_execution.llm_uuid, jwt_token),

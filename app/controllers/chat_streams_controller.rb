@@ -22,6 +22,22 @@ class ChatStreamsController < ApplicationController
       raise ActiveRecord::RecordNotFound
     end
 
+    # If the assistant response was already persisted for this PE, skip the
+    # LLM call entirely. Turbo's page cache can re-mount the message-stream
+    # controller on back-navigation and open a duplicate EventSource against
+    # the same execution_id; without this guard the server re-runs the whole
+    # LLM call and inserts a duplicate Message.
+    existing = chat.messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: prompt_execution.id)
+    if existing
+      forward(event: "saved", data: {
+        message_id: existing.id,
+        execution_id: prompt_execution.execution_id,
+        html: view_context.render(partial: "chats/message", locals: { message: existing })
+      })
+      forward(event: "done", data: {})
+      return
+    end
+
     jwt_token = current_user.jwt_token if user_signed_in?
     generation_settings = parse_generation_settings(params[:generation_settings_json])
     tool_ids = Array(params[:tool_ids]).reject(&:blank?)

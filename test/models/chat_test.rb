@@ -517,6 +517,17 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal "openai", pe.reload.llm_platform
   end
 
+  test "finalize_streamed_response is idempotent: second call with the same PE returns the existing message and creates no duplicate" do
+    pe = PromptNavigator::PromptExecution.create!(prompt: "p", llm_platform: "openai", configuration: "")
+    @chat.messages.create!(role: "user", prompt_navigator_prompt_execution: pe)
+
+    first  = @chat.finalize_streamed_response(pe, "response text", "jwt")
+    second = @chat.finalize_streamed_response(pe, "response text", "jwt")
+
+    assert_equal first.id, second.id
+    assert_equal 1, @chat.messages.where(role: "assistant", prompt_navigator_prompt_execution_id: pe.id).count
+  end
+
   # ----- build_streaming_context (private — token-budget decisions) ----- #
 
   # Builds a linear chain of N user→assistant turns on the chat, returning the

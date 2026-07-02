@@ -64,6 +64,97 @@ class ChatTest < ActiveSupport::TestCase
     assert_includes pe.prompt, "describe it"
   end
 
+  test "add_user_message prepends the attached document as data-URI markdown link" do
+    pe, _msg = @chat.add_user_message("summarize this", "key-1", "gpt-5", nil,
+                                       document: { mime: "text/csv", data_b64: "YSxi", filename: "data.csv" })
+
+    assert_match(/\A\[data\.csv\]\(data:text\/csv;base64,YSxi\)/, pe.prompt)
+    assert_includes pe.prompt, "summarize this"
+  end
+
+  test "add_user_message: image wins when both image and document are supplied" do
+    pe, _msg = @chat.add_user_message("both", "k", "gpt-5", nil,
+                                       image: { mime: "image/png", data_b64: "P" },
+                                       document: { mime: "text/plain", data_b64: "Q", filename: "f.txt" })
+    assert_match(/\A!\[\]\(data:image\/png;base64,P\)/, pe.prompt)
+    refute_match(/\A\[f\.txt\]/, pe.prompt)
+  end
+
+  test "extract_attached_document pulls a leading text-doc link into a structured hash" do
+    text, doc = @chat.send(:extract_attached_document,
+                            "[notes.md](data:text/markdown;base64,SGVsbG8=)what does this say?")
+    assert_equal "what does this say?", text
+    assert_equal({ filename: "notes.md", mime: "text/markdown", data_b64: "SGVsbG8=" }, doc)
+  end
+
+  test "extract_attached_document ignores images (leading `!`)" do
+    text, doc = @chat.send(:extract_attached_document,
+                            "![](data:image/png;base64,AAA)caption")
+    assert_equal "![](data:image/png;base64,AAA)caption", text
+    assert_nil doc
+  end
+
+  test "inline_document_content wraps decoded content in a fenced code block with lang hint" do
+    doc = { filename: "data.csv", mime: "text/csv", data_b64: Base64.strict_encode64("a,b\n1,2") }
+    out = @chat.send(:inline_document_content, doc, "please summarize")
+    assert_includes out, "Attached: data.csv"
+    assert_includes out, "```csv"
+    assert_includes out, "a,b\n1,2"
+    assert_includes out, "please summarize"
+  end
+
+  test "inline_document_content falls back to 'text' lang when filename has no extension" do
+    doc = { filename: "notes", mime: "text/plain", data_b64: Base64.strict_encode64("hello") }
+    out = @chat.send(:inline_document_content, doc, "what is this")
+    assert_includes out, "```text"
+  end
+
+  test "inline_document_content returns user_text unchanged when decoded content isn't valid UTF-8" do
+    invalid_utf8 = "\xC3\x28" # a lone continuation byte — invalid UTF-8
+    doc = { filename: "bad.txt", mime: "text/plain", data_b64: Base64.strict_encode64(invalid_utf8) }
+    out = @chat.send(:inline_document_content, doc, "user asked something")
+    assert_equal "user asked something", out
+  end
+
+  test "extract_attached_document does NOT match a link in the middle of the prompt" do
+    text, doc = @chat.send(:extract_attached_document,
+                            "hi [notes.md](data:text/markdown;base64,QQ==) look")
+    assert_equal "hi [notes.md](data:text/markdown;base64,QQ==) look", text
+    assert_nil doc
+  end
+
+  test "add_user_message + extract_attached_document round-trip preserves the doc" do
+    pe, _msg = @chat.add_user_message("summarize this", "k", "gpt-5", nil,
+                                       document: { mime: "text/csv", data_b64: "YSxi", filename: "data.csv" })
+    text, doc = @chat.send(:extract_attached_document, pe.prompt)
+    assert_equal "summarize this", text
+    assert_equal({ filename: "data.csv", mime: "text/csv", data_b64: "YSxi" }, doc)
+  end
+
+  test "strip_inline_attachments replaces embedded doc data URIs with [document: filename]" do
+    stripped = @chat.send(:strip_inline_attachments,
+                          "before [notes.md](data:text/markdown;base64,AAA) after")
+    assert_equal "before [document: notes.md] after", stripped
+  end
+
+  test "strip_inline_attachments preserves regular markdown links (non-data URIs)" do
+    stripped = @chat.send(:strip_inline_attachments, "see [docs](https://example.org/x)")
+    assert_equal "see [docs](https://example.org/x)", stripped
+  end
+
+  test "strip_inline_attachments strips both image and doc data URIs in one turn" do
+    stripped = @chat.send(:strip_inline_attachments,
+                          "![](data:image/png;base64,X) and [a.csv](data:text/csv;base64,Y)")
+    assert_equal "[image] and [document: a.csv]", stripped
+  end
+
+  test "summarize_for_title strips document data URI before checking blank" do
+    # A prompt that is ONLY a document attachment (no user text) should return
+    # nil — the summarizer has nothing meaningful to work with.
+    prompt = "[notes.md](data:text/markdown;base64,QQ==)"
+    assert_nil @chat.send(:summarize_for_title, prompt, "jwt")
+  end
+
   # ----- ordered_messages + ordered_prompt_executions ----- #
 
   test "ordered_messages returns messages in created_at ascending order" do

@@ -10,7 +10,9 @@
   <div class="message-content">
     <% if message.role == 'user' %>
       <% img, text = split_attached_image_html(message.prompt_navigator_prompt_execution&.prompt) %>
+      <% doc, text = split_attached_document_html(text) %>
       <%= img if img %>
+      <%= doc if doc %>
       <%= simple_format(text) %>
     <% else %>
       <%= assistant_response_markdown(message.prompt_navigator_prompt_execution&.response) %>

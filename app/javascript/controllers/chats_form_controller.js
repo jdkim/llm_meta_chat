@@ -4,7 +4,8 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     "text", "prompt", "submit",
-    "imageInput", "imagePreview", "imageThumbnail", "attachButton"
+    "imageInput", "imagePreview", "imageThumbnail", "attachButton",
+    "documentInput", "documentPreview", "documentChip", "attachDocumentButton"
   ]
 
   connect() {
@@ -58,16 +59,26 @@ export default class extends Controller {
     }
   }
 
-  openImagePicker() {
+  // Backwards-compat alias: the attach button in older markup calls this.
+  openImagePicker() { this.openAttachmentPicker() }
+
+  // Open the image picker. Doc-attach is via a separate button/target.
+  openAttachmentPicker() {
     if (!this.hasImageInputTarget) return
     if (this.hasAttachButtonTarget && this.attachButtonTarget.disabled) return
     this.imageInputTarget.click()
+  }
+
+  openDocumentPicker() {
+    if (!this.hasDocumentInputTarget) return
+    this.documentInputTarget.click()
   }
 
   onImageSelected() {
     if (!this.hasImageInputTarget) return
     const file = this.imageInputTarget.files && this.imageInputTarget.files[0]
     if (!file) return
+    this.clearDocument() // mutual exclusion: image OR document, not both
     if (!this.hasImageThumbnailTarget || !this.hasImagePreviewTarget) return
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -75,6 +86,27 @@ export default class extends Controller {
       this.imagePreviewTarget.style.display = ""
     }
     reader.readAsDataURL(file)
+    this.updateSubmitButton()
+  }
+
+  onDocumentSelected() {
+    if (!this.hasDocumentInputTarget) return
+    const file = this.documentInputTarget.files && this.documentInputTarget.files[0]
+    if (!file) return
+    this.clearImage() // mutual exclusion
+    if (this.hasDocumentChipTarget) {
+      this.documentChipTarget.textContent = `📄 ${file.name}`
+    }
+    if (this.hasDocumentPreviewTarget) {
+      this.documentPreviewTarget.style.display = ""
+    }
+    this.updateSubmitButton()
+  }
+
+  clearDocument() {
+    if (this.hasDocumentInputTarget) this.documentInputTarget.value = ""
+    if (this.hasDocumentPreviewTarget) this.documentPreviewTarget.style.display = "none"
+    if (this.hasDocumentChipTarget) this.documentChipTarget.textContent = ""
   }
 
   // Drag-and-drop image attachment over the chat form.

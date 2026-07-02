@@ -88,7 +88,8 @@ class ChatsController < ApplicationController
                                                                 params[:model],
                                                                 params[:branch_from_uuid],
                                                                 llm_platform: params[:family],
-                                                                image: uploaded_image_payload)
+                                                                image: uploaded_image_payload,
+                                                                document: uploaded_document_payload)
       # Push to history for rendering
       push_to_history @prompt_execution
       # Set active message UUID for highlighting in UI
@@ -186,7 +187,8 @@ class ChatsController < ApplicationController
                                                                 params[:model],
                                                                 params[:branch_from_uuid],
                                                                 llm_platform: params[:family],
-                                                                image: uploaded_image_payload)
+                                                                image: uploaded_image_payload,
+                                                                document: uploaded_document_payload)
       push_to_history @prompt_execution
       set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
 
@@ -207,6 +209,9 @@ class ChatsController < ApplicationController
   private
 
   MAX_IMAGE_BYTES = 8 * 1024 * 1024 # 8 MB
+  # 1 MB cap for text documents — they inline directly into the prompt as a
+  # fenced code block, so oversized files eat the model's context window.
+  MAX_DOCUMENT_BYTES = 1 * 1024 * 1024
 
   class InvalidGenerationSettingsError < StandardError; end
 
@@ -225,6 +230,39 @@ class ChatsController < ApplicationController
   rescue StandardError => e
     Rails.logger.warn "Image upload read failed: #{e.class}: #{e.message}"
     nil
+  end
+
+  # Read params[:document] (multipart upload) and return
+  # `{mime:, data_b64:, filename:}` or nil. Only text-family MIME types
+  # (text/*, application/json, application/xml) are accepted for v1 — binary
+  # formats like PDF need provider-native routing added later.
+  def uploaded_document_payload
+    upload = params[:document]
+    return nil if upload.blank? || !upload.respond_to?(:read)
+    bytes = upload.read
+    return nil if bytes.blank? || bytes.bytesize > MAX_DOCUMENT_BYTES
+    mime = upload.content_type.to_s
+    mime = guess_document_mime(upload.original_filename) if mime.empty?
+    return nil unless mime.start_with?("text/") || %w[application/json application/xml].include?(mime)
+    {
+      mime: mime,
+      data_b64: Base64.strict_encode64(bytes),
+      filename: upload.original_filename.to_s.presence || "attachment"
+    }
+  rescue StandardError => e
+    Rails.logger.warn "Document upload read failed: #{e.class}: #{e.message}"
+    nil
+  end
+
+  def guess_document_mime(filename)
+    case File.extname(filename.to_s).downcase
+    when ".md"  then "text/markdown"
+    when ".csv" then "text/csv"
+    when ".txt" then "text/plain"
+    when ".json" then "application/json"
+    when ".xml"  then "application/xml"
+    else             "text/plain"
+    end
   end
 
   # Pass-through generation settings: accept any JSON object. Values can be

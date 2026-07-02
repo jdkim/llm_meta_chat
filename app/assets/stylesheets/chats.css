@@ -706,6 +706,33 @@
   i { font-size: 14px; }
 }
 
+/* Document attachment preview (pre-send) and chip (in message bubble). */
+.document-preview {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.user-attached-document {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #1f2937;
+  text-decoration: none;
+
+  &:hover { background-color: #e5e7eb; }
+}
+
 /* Cancel button on the live streaming bubble. */
 .stream-cancel-button {
   position: absolute;

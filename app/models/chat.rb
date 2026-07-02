@@ -6,19 +6,27 @@ class Chat < ApplicationRecord
 
   before_create :set_uuid
 
-  # Add a user message to the chat
-  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil, image: nil)
+  # Add a user message to the chat. `image` and `document` are mutually
+  # exclusive attachments — the form surface only permits one at a time;
+  # if both slip through, image takes precedence.
+  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil, image: nil, document: nil)
     previous_id = if branch_from_execution_id.present?
       PromptNavigator::PromptExecution.find_by(execution_id: branch_from_execution_id)&.id
     else
       messages.where(role: "user").order(:created_at).last&.prompt_navigator_prompt_execution_id
     end
-    # Prepend the attached image as a data-URI markdown image so the saved
-    # prompt renders the image on reload, and so the streaming controller
-    # (reached over a GET EventSource) can recover the image from pe.prompt.
-    prompt_with_image = image.present? ? "![](data:#{image[:mime]};base64,#{image[:data_b64]})\n\n#{message}" : message
+    # Prepend the attachment as a data-URI so the saved prompt round-trips
+    # through page reload and the streaming controller (reached over a GET
+    # EventSource) can recover it from pe.prompt.
+    prompt_with_attachment = if image.present?
+      "![](data:#{image[:mime]};base64,#{image[:data_b64]})\n\n#{message}"
+    elsif document.present?
+      "[#{document[:filename]}](data:#{document[:mime]};base64,#{document[:data_b64]})\n\n#{message}"
+    else
+      message
+    end
     prompt_execution = PromptNavigator::PromptExecution.create!(
-      prompt: prompt_with_image,
+      prompt: prompt_with_attachment,
       llm_uuid: llm_uuid,
       model: model,
       llm_platform: llm_platform,
@@ -66,6 +74,10 @@ class Chat < ApplicationRecord
     # chronological order.
     pe = prompt_execution
     text_prompt, attached_image = extract_attached_image(pe.prompt)
+    text_prompt, attached_document = extract_attached_document(text_prompt)
+    # Text-only documents: inline the decoded content as a fenced code block
+    # ahead of the user's message. Providers see plain text — no wire changes.
+    text_prompt = inline_document_content(attached_document, text_prompt) if attached_document
     prompt = { role: "user", prompt: text_prompt }
     images_payload = collect_recent_images(pe, current_image: attached_image)
 
@@ -162,10 +174,10 @@ class Chat < ApplicationRecord
 
   # Summarize the user's prompt into a short title via LLM (required by ChatManager::TitleGeneratable)
   def summarize_for_title(prompt_text, jwt_token)
-    # Strip any attached data-URI image from the prompt before titling; the
-    # summarizer shouldn't see the image markdown (it leads to titles like
-    # "Undefined Image" derived from the empty alt text).
+    # Strip any attached data-URI image or document from the prompt before
+    # titling; the summarizer shouldn't see the raw attachment markdown.
     text_only, _image = extract_attached_image(prompt_text)
+    text_only, _doc   = extract_attached_document(text_only)
     return nil if text_only.blank?
 
     # Fallback used whenever LLM summarization produces no usable title
@@ -241,6 +253,8 @@ class Chat < ApplicationRecord
     # structured `images:` field on the streaming path; embedding the data
     # URI here would re-send the same image as ~30k useless text tokens.
     current_text, _img = extract_attached_image(pe.prompt)
+    current_text, attached_document = extract_attached_document(current_text)
+    current_text = inline_document_content(attached_document, current_text) if attached_document
     prompt = { role: "user", prompt: current_text }
 
     # Image-generation models don't take prior context. Summarizing through
@@ -291,17 +305,25 @@ class Chat < ApplicationRecord
     }.join("\n\n")
   end
 
-  # Replace embedded `![](data:image/…;base64,…)` markdown with a short
-  # `[image]` placeholder in a turn-hash. The actual image bytes are sent
-  # separately via the `images:` field; leaving the data URI in the text
-  # would re-send each image as ~30k useless text tokens per subsequent
-  # turn (a 100KB PNG → ~133KB base64 → ~30k tokens at ~4 chars/token).
-  INLINE_DATA_IMAGE = /!\[[^\]]*\]\(data:[^)]+\)/m
+  # Replace embedded data-URI attachments with short placeholders in a
+  # turn-hash. Both image (`![](data:…)`) and document (`[filename](data:…)`)
+  # data URIs get stripped — the actual bytes are sent separately (images via
+  # the `images:` field; documents get inlined into the current turn's text).
+  # Leaving the data URI in prior turns would re-send each attachment as
+  # tens of thousands of useless tokens per subsequent turn.
+  INLINE_DATA_IMAGE    = /!\[[^\]]*\]\(data:[^)]+\)/m
+  INLINE_DATA_DOCUMENT = /(?<!!)\[([^\]]*)\]\(data:[^)]+\)/m
   def strip_inline_images_in_turn(turn)
     {
-      prompt:   turn[:prompt].to_s.gsub(INLINE_DATA_IMAGE, "[image]"),
-      response: turn[:response].to_s.gsub(INLINE_DATA_IMAGE, "[image]")
+      prompt:   strip_inline_attachments(turn[:prompt]),
+      response: strip_inline_attachments(turn[:response])
     }
+  end
+
+  def strip_inline_attachments(text)
+    text.to_s
+        .gsub(INLINE_DATA_IMAGE, "[image]")
+        .gsub(INLINE_DATA_DOCUMENT) { "[document: #{Regexp.last_match(1)}]" }
   end
 
   # Pull a single leading `![](data:mime;base64,DATA)` image out of the prompt
@@ -313,6 +335,28 @@ class Chat < ApplicationRecord
     return [ prompt_text.to_s, nil ] unless m
     stripped = prompt_text.sub(ATTACHED_IMAGE_HEAD, "")
     [ stripped, { mime: m[1], data_b64: m[2] } ]
+  end
+
+  # Pull a single leading `[filename](data:mime;base64,DATA)` document out of the
+  # prompt text. Distinct from ATTACHED_IMAGE_HEAD by the absence of the leading `!`.
+  # Returns [text_without_doc, {mime:, data_b64:, filename:}|nil].
+  ATTACHED_DOCUMENT_HEAD = /\A\[([^\]]*)\]\(data:([^;]+);base64,([^\)]+)\)\s*\n*/m
+  def extract_attached_document(prompt_text)
+    m = prompt_text.to_s.match(ATTACHED_DOCUMENT_HEAD)
+    return [ prompt_text.to_s, nil ] unless m
+    stripped = prompt_text.sub(ATTACHED_DOCUMENT_HEAD, "")
+    [ stripped, { filename: m[1], mime: m[2], data_b64: m[3] } ]
+  end
+
+  # Decode a text-document attachment and inline its content into the prompt
+  # as a fenced code block, so the LLM sees the file contents as context.
+  # Language hint derived from the filename extension (falls back to "text").
+  def inline_document_content(document, user_text)
+    content = Base64.decode64(document[:data_b64].to_s).force_encoding("UTF-8")
+    return user_text unless content.valid_encoding?
+    lang = File.extname(document[:filename].to_s).delete(".").downcase
+    lang = "text" if lang.empty? || !lang.match?(/\A[a-z0-9]+\z/)
+    "Attached: #{document[:filename]}\n```#{lang}\n#{content}\n```\n\n#{user_text}"
   end
 
   # Cheap model used to condense overflow context. Configured via

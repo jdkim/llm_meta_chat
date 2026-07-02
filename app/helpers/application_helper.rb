@@ -109,6 +109,28 @@ module ApplicationHelper
     MARKDOWN.render(text.to_s).html_safe
   end
 
+  # Pull a leading `[filename](data:mime;base64,DATA)` document attachment
+  # off a user prompt so it can be rendered as a download chip while the
+  # remaining text renders plain. Returns [chip_html_safe_or_nil, remaining_text].
+  # Distinct from split_attached_image_html by the absence of the leading `!`.
+  ATTACHED_DOCUMENT_HEAD = /\A\[([^\]]*)\]\(data:([^;]+);base64,([^\)]+)\)\s*\n*/m
+
+  def split_attached_document_html(text)
+    s = text.to_s
+    m = s.match(ATTACHED_DOCUMENT_HEAD)
+    return [ nil, s ] unless m
+    filename = m[1].presence || "attachment"
+    href     = "data:#{m[2]};base64,#{m[3]}"
+    chip = tag.a(
+      "📄 #{filename}",
+      href: href,
+      download: filename,
+      class: "user-attached-document",
+      rel: "noopener"
+    )
+    [ chip, s.sub(ATTACHED_DOCUMENT_HEAD, "") ]
+  end
+
   # Render an assistant response, wrapping any trailing "**Tool calls**"
   # section in a collapsed <details> block. The marker is the literal
   # `\n\n---\n\n**Tool calls**` separator that llm_meta_client appends in

@@ -16,6 +16,13 @@
           <i class="bi bi-x-circle"></i>
         </button>
       </div>
+      <div class="document-preview" data-chats-form-target="documentPreview" style="display: none;">
+        <span data-chats-form-target="documentChip"></span>
+        <button type="button" class="image-clear-button" title="Remove document"
+                data-action="click->chats-form#clearDocument">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
       <div class="input-wrapper">
         <%= f.text_area :message,
             placeholder: "Enter your message...",
@@ -28,12 +35,22 @@
         <button type="button" class="attach-button" disabled
                 title="Attach image"
                 data-chats-form-target="attachButton"
-                data-action="click->chats-form#openImagePicker">
+                data-action="click->chats-form#openAttachmentPicker">
           <i class="bi bi-paperclip"></i>
+        </button>
+        <button type="button" class="attach-button"
+                title="Attach text document (TXT/MD/CSV/JSON/XML)"
+                data-chats-form-target="attachDocumentButton"
+                data-action="click->chats-form#openDocumentPicker">
+          <i class="bi bi-file-earmark-text"></i>
         </button>
         <%= f.file_field :image, accept: "image/*",
             data: { "chats-form-target": "imageInput",
                     action: "change->chats-form#onImageSelected" },
+            style: "display: none;" %>
+        <%= f.file_field :document, accept: ".txt,.md,.csv,.json,.xml,text/*,application/json,application/xml",
+            data: { "chats-form-target": "documentInput",
+                    action: "change->chats-form#onDocumentSelected" },
             style: "display: none;" %>
         <%= f.button type: "submit",
             class: "send-button",

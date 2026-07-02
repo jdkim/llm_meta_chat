@@ -95,4 +95,35 @@ class ApplicationHelperTest < ActionView::TestCase
     refute_includes html, "response-asset"
     assert_includes html, "just a sentence"
   end
+
+  # ----- split_attached_document_html ----- #
+
+  test "split_attached_document_html pulls a leading doc URI into a download chip" do
+    chip, rest = split_attached_document_html(
+      "[notes.md](data:text/markdown;base64,SGk=)Explain."
+    )
+    assert_not_nil chip
+    assert_includes chip, "user-attached-document"
+    assert_includes chip, "notes.md"
+    assert_includes chip, "download=\"notes.md\""
+    assert_includes chip, "href=\"data:text/markdown;base64,SGk=\""
+    assert_equal "Explain.", rest
+  end
+
+  test "split_attached_document_html leaves image data URIs alone" do
+    chip, rest = split_attached_document_html("![](data:image/png;base64,AAA)caption")
+    assert_nil chip
+    assert_equal "![](data:image/png;base64,AAA)caption", rest
+  end
+
+  test "split_attached_document_html leaves plain text untouched" do
+    chip, rest = split_attached_document_html("just text")
+    assert_nil chip
+    assert_equal "just text", rest
+  end
+
+  test "split_attached_document_html uses fallback name when filename is empty" do
+    chip, _ = split_attached_document_html("[](data:text/plain;base64,QQ==)hello")
+    assert_includes chip, "attachment"
+  end
 end

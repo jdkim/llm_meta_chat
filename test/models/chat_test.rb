@@ -511,6 +511,86 @@ class ChatTest < ActiveSupport::TestCase
     end
   end
 
+  test "summarize_for_title routes through the cheap summarization_target when available (avoids user's thinking model)" do
+    pe, _m = @chat.add_user_message("write a poem", "user-uuid", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+
+    captured_uuid = nil
+    captured_model = nil
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) do |_jwt, uuid, model, _ctx, _body|
+      captured_uuid = uuid
+      captured_model = model
+      "Poem Request"
+    end
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options, [ {
+      uuid: "ollama-local",
+      llm_type: "ollama",
+      available_models: [ { "value" => "qwen3-5-4b" } ]
+    } ]) do
+      with_stub(Rails.configuration, :summarization_model, "qwen3-5-4b") do
+        with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+          @chat.send(:summarize_for_title, "write a poem", "jwt")
+        end
+      end
+    end
+
+    # The summarizer should target the cheap Ollama model, NOT the user's gpt-5.
+    assert_equal "ollama-local", captured_uuid
+    assert_equal "qwen3-5-4b",   captured_model
+  end
+
+  test "strip_title_reasoning_preamble picks the last short line so reasoning preambles get discarded" do
+    reasoning_response = "My Thought Process: The user wants a title.\nOkay, let me think.\nBreaking It Down"
+    assert_equal "Breaking It Down", @chat.send(:strip_title_reasoning_preamble, reasoning_response)
+  end
+
+  test "strip_title_reasoning_preamble keeps the first line when the response is a single line" do
+    assert_equal "A Clean Title", @chat.send(:strip_title_reasoning_preamble, "A Clean Title")
+  end
+
+  test "strip_title_reasoning_preamble caps at 100 chars so a wall-of-reasoning single line doesn't survive" do
+    wall = "x" * 250
+    out = @chat.send(:strip_title_reasoning_preamble, wall)
+    assert_operator out.length, :<=, 100
+  end
+
+  test "strip_title_reasoning_preamble falls back to the first line when the last line is too long" do
+    # Common shape from chatty models: short question up top, then a
+    # multi-paragraph explanation. The last line is oversized (> 100 chars),
+    # so we fall back to the first line instead.
+    first_line = "Quick Summary"
+    long_tail = "This is an extended piece of reasoning that goes on and on and on and on and on and on and clearly wouldn't fit as a chat title anywhere"
+    out = @chat.send(:strip_title_reasoning_preamble, "#{first_line}\n\n#{long_tail}")
+    assert_equal first_line, out
+  end
+
+  test "summarize_for_title falls back to the user's own PE model when summarization_target isn't available" do
+    pe, _m = @chat.add_user_message("hello", "user-key-uuid", "gpt-5")
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)
+
+    captured_uuid = nil
+    captured_model = nil
+    fake_query = Object.new
+    fake_query.define_singleton_method(:call) do |_jwt, uuid, model, _ctx, _body|
+      captured_uuid = uuid
+      captured_model = model
+      "Hello Title"
+    end
+
+    # No Ollama entry in the catalog → summarization_target returns nil →
+    # the code should fall back to the user's own PE (uuid/model).
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options, []) do
+      with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
+        @chat.send(:summarize_for_title, "hello", "jwt")
+      end
+    end
+
+    assert_equal "user-key-uuid", captured_uuid
+    assert_equal "gpt-5",         captured_model
+  end
+
   test "summarize_for_title strips markdown formatting from the LLM's reply" do
     pe, _m = @chat.add_user_message("Hello world", "key-1", "gpt-5")
     @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe)

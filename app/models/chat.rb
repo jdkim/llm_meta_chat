@@ -193,14 +193,21 @@ class Chat < ApplicationRecord
     latest_pe = ordered_prompt_executions.last
     return fallback_title unless latest_pe&.llm_uuid && latest_pe&.model
 
+    # Prefer the cheap fixed summarization model (already used for context
+    # overflow) over the user's chatting model, which may be a thinking-capable
+    # model that emits reasoning preambles as its response — those preambles
+    # would leak into the chat title.
+    target_uuid, target_model = summarization_target(safe_llm_options(jwt_token)) ||
+                                [ latest_pe.llm_uuid, latest_pe.model ]
+
     raw = LlmMetaClient::ServerQuery.new.call(
       jwt_token,
-      latest_pe.llm_uuid,
-      latest_pe.model,
+      target_uuid,
+      target_model,
       "No context available.",
-      { role: "user", prompt: "Please summarize the following text into a short title (max 50 characters). Respond with only the title, nothing else: #{text_only}" }
+      { role: "user", prompt: "Output ONLY a short chat title (max 50 characters) for the following text. No preamble, no explanation, no reasoning — just the title.\n\nText: #{text_only}" }
     )
-    strip_title_markdown(raw).presence || fallback_title
+    strip_title_reasoning_preamble(strip_title_markdown(raw)).presence || fallback_title
   rescue StandardError => e
     Rails.logger.warn "[Chat#summarize_for_title] LLM call failed, falling back to prompt: #{e.class}: #{e.message}"
     text_only.truncate(50)
@@ -223,6 +230,30 @@ class Chat < ApplicationRecord
         .gsub(/_([^_]+)_/, '\1')                          # _italic_
         .gsub(/\A["'“”‘’「『]+|["'“”‘’」』]+\z/, "")  # wrapping quotes
         .strip
+  end
+
+  # Wrap ServerResource#available_llm_options so any transport failure (or
+  # WebMock's `NetConnectNotAllowedError` in tests, which is `Exception`
+  # rather than `StandardError`) degrades to an empty list — the caller
+  # then falls back to whatever model the user was already using.
+  def safe_llm_options(jwt_token)
+    LlmMetaClient::ServerResource.available_llm_options(jwt_token)
+  rescue Exception
+    []
+  end
+
+  # Defence against thinking-capable models bleeding reasoning into title
+  # output. If the response has multiple lines and the last non-empty line
+  # is a short standalone phrase, prefer that (it's typically the final
+  # "answer" after the model narrated its thought process). Otherwise keep
+  # the first non-empty line only. Cap at 100 chars to avoid the truncate(255)
+  # in TitleGeneratable from picking up a wall of reasoning.
+  def strip_title_reasoning_preamble(text)
+    lines = text.to_s.lines.map(&:strip).reject(&:empty?)
+    return "" if lines.empty?
+    last = lines.last
+    candidate = last.length.between?(1, 100) ? last : lines.first
+    candidate.to_s[0, 100]
   end
 
   # Set a new UUID

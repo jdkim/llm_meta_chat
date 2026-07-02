@@ -39,7 +39,7 @@
           <i class="bi bi-paperclip"></i>
         </button>
         <button type="button" class="attach-button"
-                title="Attach text document (TXT/MD/CSV/JSON/XML)"
+                title="Attach document (PDF/TXT/MD/CSV/JSON/XML)"
                 data-chats-form-target="attachDocumentButton"
                 data-action="click->chats-form#openDocumentPicker">
           <i class="bi bi-file-earmark-text"></i>
@@ -48,7 +48,7 @@
             data: { "chats-form-target": "imageInput",
                     action: "change->chats-form#onImageSelected" },
             style: "display: none;" %>
-        <%= f.file_field :document, accept: ".txt,.md,.csv,.json,.xml,text/*,application/json,application/xml",
+        <%= f.file_field :document, accept: ".pdf,.txt,.md,.csv,.json,.xml,application/pdf,text/*,application/json,application/xml",
             data: { "chats-form-target": "documentInput",
                     action: "change->chats-form#onDocumentSelected" },
             style: "display: none;" %>

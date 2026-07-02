@@ -212,6 +212,11 @@ class ChatsController < ApplicationController
   # 1 MB cap for text documents — they inline directly into the prompt as a
   # fenced code block, so oversized files eat the model's context window.
   MAX_DOCUMENT_BYTES = 1 * 1024 * 1024
+  # 10 MB cap for PDFs — they flow as native document blocks (Anthropic/Gemini)
+  # rather than inline text, so the constraint is provider-side. Matches the
+  # server's Api::ChatStreamsController::MAX_DOCUMENT_BYTES.
+  MAX_PDF_BYTES = 10 * 1024 * 1024
+  PDF_MIME = "application/pdf"
 
   class InvalidGenerationSettingsError < StandardError; end
 
@@ -233,17 +238,24 @@ class ChatsController < ApplicationController
   end
 
   # Read params[:document] (multipart upload) and return
-  # `{mime:, data_b64:, filename:}` or nil. Only text-family MIME types
-  # (text/*, application/json, application/xml) are accepted for v1 — binary
-  # formats like PDF need provider-native routing added later.
+  # `{mime:, data_b64:, filename:}` or nil. Accepts text-family MIME types
+  # (inlined into the prompt) and application/pdf (forwarded as a native
+  # multimodal document block to the LLM). Enforces different size caps:
+  # 1 MB for text (context-window aware), 10 MB for PDFs (provider-side).
   def uploaded_document_payload
     upload = params[:document]
     return nil if upload.blank? || !upload.respond_to?(:read)
     bytes = upload.read
-    return nil if bytes.blank? || bytes.bytesize > MAX_DOCUMENT_BYTES
+    return nil if bytes.blank?
     mime = upload.content_type.to_s
     mime = guess_document_mime(upload.original_filename) if mime.empty?
-    return nil unless mime.start_with?("text/") || %w[application/json application/xml].include?(mime)
+    if mime == PDF_MIME
+      return nil if bytes.bytesize > MAX_PDF_BYTES
+    elsif mime.start_with?("text/") || %w[application/json application/xml].include?(mime)
+      return nil if bytes.bytesize > MAX_DOCUMENT_BYTES
+    else
+      return nil
+    end
     {
       mime: mime,
       data_b64: Base64.strict_encode64(bytes),
@@ -261,6 +273,7 @@ class ChatsController < ApplicationController
     when ".txt" then "text/plain"
     when ".json" then "application/json"
     when ".xml"  then "application/xml"
+    when ".pdf" then PDF_MIME
     else             "text/plain"
     end
   end

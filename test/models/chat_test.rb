@@ -155,6 +155,13 @@ class ChatTest < ActiveSupport::TestCase
     assert_nil @chat.send(:summarize_for_title, prompt, "jwt")
   end
 
+  test "pdf_document? returns true for application/pdf mime, false for text mimes" do
+    assert @chat.send(:pdf_document?, { mime: "application/pdf", data_b64: "X" })
+    refute @chat.send(:pdf_document?, { mime: "text/markdown", data_b64: "Y" })
+    refute @chat.send(:pdf_document?, { mime: "text/plain", data_b64: "Z" })
+    refute @chat.send(:pdf_document?, nil)
+  end
+
   # ----- ordered_messages + ordered_prompt_executions ----- #
 
   test "ordered_messages returns messages in created_at ascending order" do

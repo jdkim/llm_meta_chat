@@ -63,5 +63,44 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
     assert_equal "text/csv",      ctrl.send(:guess_document_mime, "data.csv")
     assert_equal "text/plain",    ctrl.send(:guess_document_mime, "unknown.xyz")
     assert_equal "application/json", ctrl.send(:guess_document_mime, "conf.json")
+    assert_equal "application/pdf", ctrl.send(:guess_document_mime, "paper.pdf")
+  end
+
+  test "POST /chats with a PDF document stores it as a data-URI link with application/pdf mime" do
+    assert_difference -> { PromptNavigator::PromptExecution.count }, 1 do
+      post chats_path, params: {
+        message: "read this",
+        document: fixture_file_upload("tiny.pdf", "application/pdf")
+      }
+    end
+    pe = PromptNavigator::PromptExecution.order(:id).last
+    assert_match(/\A\[tiny\.pdf\]\(data:application\/pdf;base64,[^\)]+\)\s+read this/, pe.prompt)
+  end
+
+  test "PDF over 10 MB is rejected while a PDF between 1-10 MB is accepted (the text-doc 1 MB cap doesn't apply to PDFs)" do
+    # A 2 MB PDF should be accepted (over the text cap, under the PDF cap).
+    accepted_pdf = Tempfile.new([ "med", ".pdf" ], binmode: true)
+    accepted_pdf.write("%PDF-1.4\n" + ("x" * (2 * 1024 * 1024)))
+    accepted_pdf.rewind
+    post chats_path, params: {
+      message: "accept me",
+      document: Rack::Test::UploadedFile.new(accepted_pdf.path, "application/pdf")
+    }
+    pe = PromptNavigator::PromptExecution.order(:id).last
+    assert_match(/\A\[.*\]\(data:application\/pdf/, pe.prompt, "2 MB PDF should be accepted")
+
+    # An 11 MB PDF should be rejected.
+    big_pdf = Tempfile.new([ "big", ".pdf" ], binmode: true)
+    big_pdf.write("%PDF-1.4\n" + ("x" * (11 * 1024 * 1024)))
+    big_pdf.rewind
+    post chats_path, params: {
+      message: "too big",
+      document: Rack::Test::UploadedFile.new(big_pdf.path, "application/pdf")
+    }
+    pe = PromptNavigator::PromptExecution.order(:id).last
+    assert_equal("too big", pe.prompt, "11 MB PDF should be rejected")
+  ensure
+    accepted_pdf&.close!
+    big_pdf&.close!
   end
 end

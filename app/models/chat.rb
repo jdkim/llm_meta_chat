@@ -75,9 +75,12 @@ class Chat < ApplicationRecord
     pe = prompt_execution
     text_prompt, attached_image = extract_attached_image(pe.prompt)
     text_prompt, attached_document = extract_attached_document(text_prompt)
-    # Text-only documents: inline the decoded content as a fenced code block
-    # ahead of the user's message. Providers see plain text — no wire changes.
-    text_prompt = inline_document_content(attached_document, text_prompt) if attached_document
+    # PDFs travel to the LLM as native multimodal document blocks via the
+    # server's `document:` param — the server picks the provider dispatch
+    # (Anthropic document block, Gemini inline_data). Text docs stay in the
+    # prompt as a fenced code block so any provider handles them uniformly.
+    pdf_document = pdf_document?(attached_document) ? attached_document : nil
+    text_prompt = inline_document_content(attached_document, text_prompt) if attached_document && pdf_document.nil?
     prompt = { role: "user", prompt: text_prompt }
     images_payload = collect_recent_images(pe, current_image: attached_image)
 
@@ -105,6 +108,7 @@ class Chat < ApplicationRecord
         tool_ids: tool_ids,
         generation_settings: generation_settings,
         images: images_payload.presence,
+        document: pdf_document&.slice(:mime, :data_b64),
         &block
       )
     end
@@ -254,7 +258,11 @@ class Chat < ApplicationRecord
     # URI here would re-send the same image as ~30k useless text tokens.
     current_text, _img = extract_attached_image(pe.prompt)
     current_text, attached_document = extract_attached_document(current_text)
-    current_text = inline_document_content(attached_document, current_text) if attached_document
+    # PDFs travel as a native document block via the client's `document:` param,
+    # so don't inline the binary blob here. Text docs still get inlined.
+    if attached_document && !pdf_document?(attached_document)
+      current_text = inline_document_content(attached_document, current_text)
+    end
     prompt = { role: "user", prompt: current_text }
 
     # Image-generation models don't take prior context. Summarizing through
@@ -346,6 +354,14 @@ class Chat < ApplicationRecord
     return [ prompt_text.to_s, nil ] unless m
     stripped = prompt_text.sub(ATTACHED_DOCUMENT_HEAD, "")
     [ stripped, { filename: m[1], mime: m[2], data_b64: m[3] } ]
+  end
+
+  # PDF attachments travel as native multimodal document blocks to the
+  # provider (via the client's `document:` kwarg → server → llm.rb's
+  # `LLM::File` pipeline), NOT inlined as text. Every other document mime
+  # gets decoded and inlined as a fenced code block.
+  def pdf_document?(document)
+    document && document[:mime].to_s == "application/pdf"
   end
 
   # Decode a text-document attachment and inline its content into the prompt

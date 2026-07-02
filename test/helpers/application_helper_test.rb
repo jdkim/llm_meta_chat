@@ -72,6 +72,24 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_includes html, "<summary"
   end
 
+  test "tool-calls section renders before the main response body" do
+    response = <<~MD
+      main response goes here
+
+      ---
+
+      **Tool calls**
+
+      - `weather`
+    MD
+    html = assistant_response_markdown(response)
+    tool_calls_idx = html.index("tool-calls-section")
+    body_idx = html.index("main response goes here")
+    assert tool_calls_idx, "expected tool-calls-section in output"
+    assert body_idx, "expected main body in output"
+    assert tool_calls_idx < body_idx, "expected tool-calls-section to appear before the main body"
+  end
+
   test "non-markdown plain text still renders without wrapping" do
     html = assistant_response_markdown("just a sentence")
     refute_includes html, "response-asset"

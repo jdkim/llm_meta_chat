@@ -126,6 +126,10 @@ module ApplicationHelper
     tools_body = tools.sub(/\A\*\*Tool calls\*\*\n+/, "")
     summary = content_tag(:summary, "🛠 Tool calls")
     block = content_tag(:details, summary + markdown(tools_body), class: "tool-calls-section")
-    (rendered + block).html_safe
+    # Tool calls go first so the user sees what the model did before the
+    # narrative response. During live streaming, tool call bubbles appear
+    # above the assistant bubble; showing the section on top after persist
+    # keeps the visual position consistent.
+    (block + rendered).html_safe
   end
 end

@@ -453,10 +453,22 @@
   .bi-server {
     color: #6b7280;
   }
+
+  .mcp-server-select-all {
+    cursor: pointer;
+    margin: 0 0 0 auto; /* push to the far right of the header row */
+    accent-color: #2563eb;
+  }
+  .mcp-server-select-all:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
 }
 
 .mcp-server-name {
-  flex: 1;
+  /* No `flex: 1` — the name hugs its neighbors on the left so the
+     "n tools" indicator sits right next to it. The select-all checkbox
+     uses `margin-left: auto` to float to the far right. */
 }
 
 .tool-available-count {

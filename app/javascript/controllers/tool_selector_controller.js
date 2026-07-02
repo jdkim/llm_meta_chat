@@ -68,6 +68,90 @@ export default class extends Controller {
     }
     this.#updateCountBadge()
     this.#updateHiddenFields()
+    // Refresh the parent server's "select all" checkbox state so it
+    // reflects the mix of checked/unchecked child tools.
+    const container = event.currentTarget.closest("[data-server-tools]")
+    const serverUuid = container?.getAttribute("data-server-tools")
+    if (serverUuid) this.#updateServerHeaderCheckbox(serverUuid)
+  }
+
+  // Select / deselect every active tool for the given server.
+  toggleAllForServer(event) {
+    const checkbox = event.currentTarget
+    const serverUuid = checkbox.dataset.serverUuid
+    const shouldSelect = checkbox.checked
+    const container = this.serverListTarget.querySelector(
+      `[data-server-tools="${CSS.escape(serverUuid)}"]`
+    )
+    if (!container) return
+
+    // If tools haven't been fetched yet, kick off the fetch, then re-apply
+    // the toggle once they land. Fresh servers show a "Click to load tools…"
+    // placeholder — the user's intent is clearly to grab everything the
+    // server has, so lazy-load transparently.
+    if (container.dataset.loaded !== "true") {
+      this.#fetchToolsForServer(serverUuid, container).then(() => {
+        this.#applyServerBulkToggle(serverUuid, container, shouldSelect)
+      })
+    } else {
+      this.#applyServerBulkToggle(serverUuid, container, shouldSelect)
+    }
+  }
+
+  // Prevent a click on the select-all checkbox from bubbling up to the
+  // server-header row (which handles expand/collapse). Without this, ticking
+  // the box would also close/open the panel unexpectedly.
+  stopBubble(event) {
+    event.stopPropagation()
+  }
+
+  #applyServerBulkToggle(serverUuid, container, shouldSelect) {
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]')
+    checkboxes.forEach((cb) => {
+      cb.checked = shouldSelect
+      const toolId = cb.value
+      if (shouldSelect) {
+        this.selectedToolIds.add(toolId)
+      } else {
+        this.selectedToolIds.delete(toolId)
+      }
+    })
+    this.#updateCountBadge()
+    this.#updateHiddenFields()
+    this.#updateServerHeaderCheckbox(serverUuid)
+  }
+
+  // Reflect the current selection state on the server-header "select all"
+  // checkbox: checked when every active tool is selected, unchecked when
+  // none are, indeterminate for a mix.
+  #updateServerHeaderCheckbox(serverUuid) {
+    const header = this.serverListTarget.querySelector(
+      `.mcp-server-select-all[data-server-uuid="${CSS.escape(serverUuid)}"]`
+    )
+    const container = this.serverListTarget.querySelector(
+      `[data-server-tools="${CSS.escape(serverUuid)}"]`
+    )
+    if (!header || !container) return
+
+    const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'))
+    if (checkboxes.length === 0) {
+      header.checked = false
+      header.indeterminate = false
+      header.disabled = true
+      return
+    }
+    header.disabled = false
+    const selected = checkboxes.filter((cb) => cb.checked).length
+    if (selected === 0) {
+      header.checked = false
+      header.indeterminate = false
+    } else if (selected === checkboxes.length) {
+      header.checked = true
+      header.indeterminate = false
+    } else {
+      header.checked = false
+      header.indeterminate = true
+    }
   }
 
   async #fetchMcpServers() {
@@ -120,14 +204,21 @@ export default class extends Controller {
           <i class="bi bi-chevron-right server-toggle-icon"></i>
           <i class="bi bi-server"></i>
           <span class="mcp-server-name">${this.#escapeHtml(server.name)}</span>
-          ${sharedBadge}
           ${server.tools && server.tools.length > 0 ? `<span class="tool-available-count">${server.tools.filter((t) => t.active).length} tools</span>` : ""}
+          ${sharedBadge}
+          <input type="checkbox" class="mcp-server-select-all"
+                 data-server-uuid="${escapedUuid}"
+                 data-action="change->tool-selector#toggleAllForServer click->tool-selector#stopBubble"
+                 title="Select / deselect all tools in this server">
         </div>
         <div class="mcp-server-tools" data-server-tools="${escapedUuid}" style="display: none;" data-loaded="${server.tools && server.tools.length > 0 ? "true" : "false"}">
           ${server.tools && server.tools.length > 0 ? this.#renderTools(server.tools) : '<div class="tool-loading-inline">Click to load tools...</div>'}
         </div>
       `
       this.serverListTarget.appendChild(serverDiv)
+      if (server.tools && server.tools.length > 0) {
+        this.#updateServerHeaderCheckbox(server.uuid)
+      }
     }
   }
 
@@ -182,6 +273,9 @@ export default class extends Controller {
       if (server) {
         server.tools = tools
       }
+      // Sync the header "select all" checkbox to the freshly-loaded tools —
+      // handles the case where the user had previous selections restored.
+      this.#updateServerHeaderCheckbox(serverUuid)
     } catch (e) {
       console.error("Failed to fetch tools:", e)
       container.innerHTML =

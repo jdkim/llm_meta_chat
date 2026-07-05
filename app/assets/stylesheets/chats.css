@@ -745,6 +745,23 @@
   &:hover { background-color: #e5e7eb; }
 }
 
+/* Errored assistant bubble — visible signal that the stream failed. */
+.message.stream-errored {
+  border-color: #fecaca;
+  background-color: #fef2f2;
+
+  .message-role {
+    color: #b91c1c;
+  }
+}
+
+.stream-error {
+  color: #b91c1c;
+  font-size: 13px;
+  font-style: italic;
+  margin: 4px 0 0 0;
+}
+
 /* Cancel button on the live streaming bubble. */
 .stream-cancel-button {
   position: absolute;

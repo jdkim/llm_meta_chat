@@ -236,11 +236,31 @@ export default class extends Controller {
     }
     let message = "Stream interrupted."
     try { if (event.data) message = JSON.parse(event.data).message || message } catch {}
+
+    // Swap the transient phase label ("🤔 Thinking…" / "🤖 streaming…") for
+    // a clear failure indicator so the bubble doesn't sit forever pretending
+    // to be in flight — this used to leave users staring at a spinning
+    // reasoning block when the upstream provider returned e.g. HTTP 503.
+    const role = this.element.querySelector(".message-role")
+    if (role) role.textContent = "⚠️ error"
+    this.element.classList.add("stream-errored")
+
+    // Fold the pulsing "reasoning" section (it stops the animation and
+    // collapses the details) and drop any transient tool-call bubbles so
+    // nothing looks mid-stream after the error is displayed.
+    this.#foldTransientSections()
+    this.#removeTransientToolCallBubbles()
+
     const errEl = document.createElement("p")
     errEl.className = "stream-error"
     errEl.textContent = `[error] ${message}`
     this.contentTarget.appendChild(errEl)
     this.#close()
+    // Make the DOM node inert (parallel to #onDone) so Turbo's page cache
+    // can't re-mount this controller and open a duplicate stream on
+    // back-navigation.
+    this.element.removeAttribute("data-controller")
+    this.element.removeAttribute("data-message-stream-url-value")
   }
 
   #close() {

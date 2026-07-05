@@ -222,26 +222,9 @@ class ChatTest < ActiveSupport::TestCase
     refute @chat.send(:image_model?, "claude-opus-4-7")
   end
 
-  # ----- format_transcript (private) ----- #
-
-  test "format_transcript renders each turn as 'User: ...\\nAssistant: ...' separated by blank lines" do
-    out = @chat.send(:format_transcript, [
-      { prompt: "p1", response: "r1" },
-      { prompt: "p2", response: "r2" }
-    ])
-    assert_equal "User: p1\nAssistant: r1\n\nUser: p2\nAssistant: r2", out
-  end
-
-  test "format_transcript returns empty string for an empty turn list" do
-    assert_equal "", @chat.send(:format_transcript, [])
-  end
-
-  test "format_transcript replaces inline data-URI image markdown with [image] placeholder" do
-    out = @chat.send(:format_transcript, [
-      { prompt: "![](data:image/png;base64,AAAA) what is this?", response: "An apple." }
-    ])
-    assert_equal "User: [image] what is this?\nAssistant: An apple.", out
-  end
+  # (format_transcript was removed in Phase 4 — history now goes as
+  # role-tagged messages, not a "User: /Assistant:" concatenated string.
+  # See the build_streaming_messages block below.)
 
   test "strip_inline_images_in_turn rewrites both prompt and response" do
     stripped = @chat.send(:strip_inline_images_in_turn,
@@ -348,9 +331,9 @@ class ChatTest < ActiveSupport::TestCase
     refute_includes data, "TRUNK"
   end
 
-  # ----- build_streaming_context branch awareness ----- #
+  # ----- build_streaming_messages branch awareness ----- #
 
-  test "build_streaming_context formats only the branch's lineage, not sibling-branch turns" do
+  test "build_streaming_messages includes only the branch's lineage, not sibling-branch turns" do
     # Trunk-A → Trunk-B (sibling branch off Trunk-A), and Trunk-A → Branch-C
     # (the branch we'll send from).
     trunk_a, _ = @chat.add_user_message("trunk-a question", "key", "gpt-5")
@@ -365,22 +348,23 @@ class ChatTest < ActiveSupport::TestCase
     branch_c.update!(response: "branch-c answer")
     @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: branch_c)
 
-    # New prompt sent from the branch tip (branch_c). build_streaming_context
+    # New prompt sent from the branch tip (branch_c). build_streaming_messages
     # should anchor on this PE and walk its `previous` chain — visiting
     # branch_c → trunk_a only, never trunk_b.
     next_pe, _ = @chat.add_user_message("next on branch", "key", "gpt-5", branch_c.execution_id)
 
-    summarized_context = nil
+    messages = nil
     with_stub(LlmMetaClient::ServerResource, :available_llm_options,
               [ { uuid: "key", llm_type: "openai" } ]) do
-      summarized_context, _ = @chat.send(:build_streaming_context, next_pe, "jwt")
+      messages, _ = @chat.send(:build_streaming_messages, next_pe, "jwt")
     end
+    joined = messages.map { |m| m[:content] }.join("\n")
 
-    # The branch's turns appear in the transcript; the sibling's do not.
-    assert_includes summarized_context, "branch-c follow-up"
-    assert_includes summarized_context, "trunk-a question"
-    refute_includes summarized_context, "trunk-b sibling talk"
-    refute_includes summarized_context, "trunk-b answer"
+    # The branch's turns appear as role-tagged messages; the sibling's do not.
+    assert_includes joined, "branch-c follow-up"
+    assert_includes joined, "trunk-a question"
+    refute_includes joined, "trunk-b sibling talk"
+    refute_includes joined, "trunk-b answer"
   end
 
   # ----- summarization_target (private) ----- #
@@ -733,37 +717,39 @@ class ChatTest < ActiveSupport::TestCase
     Rails.configuration.summarize_conversation_count = original
   end
 
-  test "build_streaming_context raises OllamaUnavailableError when no LLM options are configured" do
+  test "build_streaming_messages raises OllamaUnavailableError when no LLM options are configured" do
     pe = build_chain(1)
     with_stub(LlmMetaClient::ServerResource, :available_llm_options, []) do
       assert_raises(LlmMetaClient::Exceptions::OllamaUnavailableError) do
-        @chat.send(:build_streaming_context, pe, "jwt")
+        @chat.send(:build_streaming_messages, pe, "jwt")
       end
     end
   end
 
-  test "build_streaming_context returns 'No context available.' for image-gen models regardless of chain depth" do
+  test "build_streaming_messages returns an empty messages array for image-gen models" do
     pe = build_chain(5, model: "gemini-3-pro-image")
     with_stub(LlmMetaClient::ServerResource, :available_llm_options,
               [ { uuid: "k", llm_type: "openai" } ]) do
-      ctx, prompt = @chat.send(:build_streaming_context, pe, "jwt")
-      assert_equal "No context available.", ctx
-      # The current-turn prompt is still passed through.
-      assert_equal "p5", prompt[:prompt]
+      messages, current = @chat.send(:build_streaming_messages, pe, "jwt")
+      assert_equal [], messages
+      # Current-turn text is still returned as the second tuple element.
+      assert_equal "p5", current
     end
   end
 
-  test "build_streaming_context returns 'No context available.' (+ suffix) for a root prompt with no ancestors" do
+  test "build_streaming_messages emits only a system directive (no prior turns) for a root prompt with no ancestors" do
     pe = build_chain(1)
     with_stub(LlmMetaClient::ServerResource, :available_llm_options,
               [ { uuid: "k", llm_type: "openai" } ]) do
-      ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
-      assert_includes ctx, "No context available."
-      assert_includes ctx, "Additional prompt:"
+      messages, _ = @chat.send(:build_streaming_messages, pe, "jwt")
+
+      assert_equal 1, messages.length
+      assert_equal "system", messages.first[:role]
+      assert_includes messages.first[:content], "Responses from the assistant must consist solely of the response body."
     end
   end
 
-  test "build_streaming_context replays ancestors verbatim when chain length <= verbatim_count" do
+  test "build_streaming_messages replays ancestors as role-tagged messages when chain length <= verbatim_count" do
     # 3 turns, verbatim_count = 5 → all ancestors replayed verbatim, no summarize call.
     pe = build_chain(3)
     called_summarize = false
@@ -774,22 +760,33 @@ class ChatTest < ActiveSupport::TestCase
       with_stub(LlmMetaClient::ServerResource, :available_llm_options,
                 [ { uuid: "k", llm_type: "openai" } ]) do
         with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
-          ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
-          # The leaf is the active turn; ancestors are the prior 2 PEs.
-          assert_includes ctx, "User: p1\nAssistant: r1"
-          assert_includes ctx, "User: p2\nAssistant: r2"
-          # No summary marker should appear.
-          refute_includes ctx, "Summary of earlier conversation"
+          messages, _ = @chat.send(:build_streaming_messages, pe, "jwt")
+
+          # Expect: [system, user p1, assistant r1, user p2, assistant r2, user p3, assistant r3]
+          # (p3 IS included as an ancestor entry too because build_chain
+          # creates PEs that link back to their previous; the leaf is
+          # itself part of the walked chain.)
+          roles = messages.map { |m| m[:role] }
+          assert_equal "system", roles.first
+          # Ancestor content lands as separate role-tagged messages —
+          # NOT concatenated into a "User: ...\nAssistant: ..." string.
+          user_contents = messages.select { |m| m[:role] == "user" }.map { |m| m[:content] }
+          asst_contents = messages.select { |m| m[:role] == "assistant" }.map { |m| m[:content] }
+          assert_includes user_contents, "p1"
+          assert_includes user_contents, "p2"
+          assert_includes asst_contents, "r1"
+          assert_includes asst_contents, "r2"
+          # No summary marker.
+          refute(messages.any? { |m| m[:content].to_s.include?("Summary of earlier conversation") })
         end
       end
     end
     refute called_summarize, "the summarizer must not be invoked within budget"
   end
 
-  test "build_streaming_context summarizes the older slice and keeps the most-recent verbatim_count turns intact" do
-    # 8 turns total, verbatim_count = 3 → older = 4 ancestors, recent = 3.
-    # (The leaf is the active turn, so ancestors = 7. Older 4 get summarized,
-    # recent 3 stay verbatim.)
+  test "build_streaming_messages summarizes the older slice into a system message and keeps recent turns as messages" do
+    # 8 turns total, verbatim_count = 3 → older = 4 ancestors get summarized;
+    # recent 3 kept verbatim as role-tagged messages.
     pe = build_chain(8)
     captured = nil
     fake_query = Object.new
@@ -802,27 +799,31 @@ class ChatTest < ActiveSupport::TestCase
       with_stub(LlmMetaClient::ServerResource, :available_llm_options,
                 [ { uuid: "k", llm_type: "openai" } ]) do
         with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
-          ctx, _prompt = @chat.send(:build_streaming_context, pe, "jwt")
+          messages, _ = @chat.send(:build_streaming_messages, pe, "jwt")
 
-          assert_includes ctx, "Summary of earlier conversation: older-summary"
-          assert_includes ctx, "Recent conversation:"
+          # System message carries the summary + the always-on directive.
+          system_msg = messages.find { |m| m[:role] == "system" }
+          assert_not_nil system_msg
+          assert_includes system_msg[:content], "Summary of earlier conversation: older-summary"
+          assert_includes system_msg[:content], "Responses from the assistant must consist solely of the response body."
+
           # Recent 3 of the 7 ancestors are p5..p7 (p8 is the active turn).
-          assert_includes ctx, "User: p5\nAssistant: r5"
-          assert_includes ctx, "User: p6\nAssistant: r6"
-          assert_includes ctx, "User: p7\nAssistant: r7"
-          # Older turns must NOT appear verbatim.
-          refute_includes ctx, "User: p1\nAssistant: r1"
+          user_contents = messages.select { |m| m[:role] == "user" }.map { |m| m[:content] }
+          asst_contents = messages.select { |m| m[:role] == "assistant" }.map { |m| m[:content] }
+          %w[p5 p6 p7].each { |p| assert_includes user_contents, p }
+          %w[r5 r6 r7].each { |r| assert_includes asst_contents, r }
+          # Older turns must NOT reappear as their own role-tagged messages.
+          %w[p1 p2 p3 p4].each { |p| refute_includes user_contents, p }
         end
       end
     end
 
-    # The summarizer received the older slice as its context arg (the format
-    # is the raw build_context array — host code passes it through).
+    # The summarizer received the older slice as its context arg.
     assert captured.is_a?(Array)
     assert_equal [ "p1", "p2", "p3", "p4" ], captured.map { |t| t[:prompt] }
   end
 
-  test "build_streaming_context prefers the ollama qwen summarizer when available" do
+  test "build_streaming_messages prefers the ollama qwen summarizer when available" do
     pe = build_chain(8)
     summarizer_uuid = summarizer_model = nil
     fake_query = Object.new
@@ -842,7 +843,7 @@ class ChatTest < ActiveSupport::TestCase
     with_verbatim_count(3) do
       with_stub(LlmMetaClient::ServerResource, :available_llm_options, options) do
         with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
-          @chat.send(:build_streaming_context, pe, "jwt")
+          @chat.send(:build_streaming_messages, pe, "jwt")
         end
       end
     end
@@ -851,7 +852,7 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal "qwen3-6-35b-fast", summarizer_model
   end
 
-  test "build_streaming_context falls back to the user's own model when ollama qwen isn't available" do
+  test "build_streaming_messages falls back to the user's own model when ollama qwen isn't available" do
     pe = build_chain(8)
     summarizer_uuid = summarizer_model = nil
     fake_query = Object.new
@@ -867,7 +868,7 @@ class ChatTest < ActiveSupport::TestCase
     with_verbatim_count(3) do
       with_stub(LlmMetaClient::ServerResource, :available_llm_options, options) do
         with_stub(LlmMetaClient::ServerQuery, :new, fake_query) do
-          @chat.send(:build_streaming_context, pe, "jwt")
+          @chat.send(:build_streaming_messages, pe, "jwt")
         end
       end
     end
@@ -876,18 +877,49 @@ class ChatTest < ActiveSupport::TestCase
     assert_equal "gpt-5", summarizer_model
   end
 
-  test "build_streaming_context appends the tool-error directive only when with_tools: true" do
+  test "build_streaming_messages appends the tool-error directive to the system message only when with_tools: true" do
     pe = build_chain(1)
     with_stub(LlmMetaClient::ServerResource, :available_llm_options,
               [ { uuid: "k", llm_type: "openai" } ]) do
-      ctx_no_tools, _ = @chat.send(:build_streaming_context, pe, "jwt", with_tools: false)
-      ctx_tools, _ = @chat.send(:build_streaming_context, pe, "jwt", with_tools: true)
+      messages_no_tools, _ = @chat.send(:build_streaming_messages, pe, "jwt", with_tools: false)
+      messages_tools,    _ = @chat.send(:build_streaming_messages, pe, "jwt", with_tools: true)
 
-      refute_includes ctx_no_tools, "tool call returns an error"
-      assert_includes ctx_tools, "tool call returns an error"
-      # Both still carry the always-on Additional-prompt suffix.
-      assert_includes ctx_no_tools, "Additional prompt:"
-      assert_includes ctx_tools, "Additional prompt:"
+      sys_no_tools = messages_no_tools.find { |m| m[:role] == "system" }[:content]
+      sys_tools    = messages_tools.find { |m| m[:role] == "system" }[:content]
+
+      refute_includes sys_no_tools, "tool call returns an error"
+      assert_includes sys_tools,    "tool call returns an error"
+      # Both still carry the always-on directive.
+      assert_includes sys_no_tools, "Responses from the assistant must consist solely of the response body."
+      assert_includes sys_tools,    "Responses from the assistant must consist solely of the response body."
+    end
+  end
+
+  test "build_streaming_messages strips inline data-URI attachments from historical turns" do
+    # Turn 1 had an image attached; the raw data URI should NOT resurface as
+    # base64 in the messages array (would balloon context tokens).
+    pe1 = PromptNavigator::PromptExecution.create!(
+      prompt: "![](data:image/png;base64,BASE64BLOB) what is this?",
+      response: "An apple.",
+      llm_uuid: "k", model: "gpt-5", configuration: ""
+    )
+    @chat.messages.create!(role: "user",      prompt_navigator_prompt_execution: pe1)
+    @chat.messages.create!(role: "assistant", prompt_navigator_prompt_execution: pe1)
+    pe2 = PromptNavigator::PromptExecution.create!(
+      prompt: "and the color?", response: "",
+      llm_uuid: "k", model: "gpt-5", configuration: "",
+      previous_id: pe1.id
+    )
+    @chat.messages.create!(role: "user", prompt_navigator_prompt_execution: pe2)
+
+    with_verbatim_count(10) do
+      with_stub(LlmMetaClient::ServerResource, :available_llm_options,
+                [ { uuid: "k", llm_type: "openai" } ]) do
+        messages, _ = @chat.send(:build_streaming_messages, pe2, "jwt")
+        joined = messages.map { |m| m[:content] }.join("\n")
+        refute_includes joined, "BASE64BLOB"
+        assert_includes joined, "[image] what is this?"
+      end
     end
   end
 end

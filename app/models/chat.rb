@@ -98,17 +98,18 @@ class Chat < ApplicationRecord
         &block
       )
     else
-      summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
+      messages, current_user_content = build_streaming_messages(prompt_execution, jwt_token, with_tools: tool_ids.any?)
       LlmMetaClient::ServerQuery.new.stream(
         jwt_token,
         prompt_execution.llm_uuid,
         prompt_execution.model,
-        summarized_context,
-        prompt,
+        "", # legacy `context` string — ignored server-side when `messages:` is present
+        { role: "user", prompt: current_user_content },
         tool_ids: tool_ids,
         generation_settings: generation_settings,
         images: images_payload.presence,
         document: pdf_document&.slice(:mime, :data_b64),
+        messages: messages,
         &block
       )
     end
@@ -263,23 +264,28 @@ class Chat < ApplicationRecord
 
   # Send messages to LLM and get response
   def send_to_llm(prompt_execution, jwt_token, tool_ids: [], generation_settings: {})
-    summarized_context, prompt = build_streaming_context(prompt_execution, jwt_token, with_tools: tool_ids.any?)
+    messages, current_user_content = build_streaming_messages(prompt_execution, jwt_token, with_tools: tool_ids.any?)
     LlmMetaClient::ServerQuery.new.call(
       jwt_token,
       prompt_execution.llm_uuid,
       prompt_execution.model,
-      summarized_context,
-      prompt,
+      "", # legacy `context` string — ignored server-side when `messages:` is present
+      { role: "user", prompt: current_user_content },
       tool_ids: tool_ids,
-      generation_settings: generation_settings
+      generation_settings: generation_settings,
+      messages: messages
     )
   end
 
-  # Build the (summarized_context, prompt) tuple for an LLM call.
-  # Shared by both the synchronous and streaming paths. Anchors on the
-  # explicit `prompt_execution` so branched chats (new prompt sent from an
-  # older selected history pane entry) walk the correct lineage.
-  def build_streaming_context(prompt_execution, jwt_token, with_tools: false)
+  # Build the (messages_array, current_user_content) tuple for an LLM call.
+  # Prior turns become a proper role-tagged `messages` array — replaces the
+  # legacy "concatenate everything into one user string" packaging that
+  # made thinking-capable models re-execute the previous turn's task
+  # instead of the new instruction. See llm_meta_client 1.7.0 wire format.
+  # Anchors on the explicit `prompt_execution` so branched chats (new
+  # prompt sent from an older selected history pane entry) walk the correct
+  # lineage.
+  def build_streaming_messages(prompt_execution, jwt_token, with_tools: false)
     llm_options = LlmMetaClient::ServerResource.available_llm_options(jwt_token)
     raise LlmMetaClient::Exceptions::OllamaUnavailableError, "No LLM available" if llm_options.empty?
 
@@ -294,54 +300,57 @@ class Chat < ApplicationRecord
     if attached_document && !pdf_document?(attached_document)
       current_text = inline_document_content(attached_document, current_text)
     end
-    prompt = { role: "user", prompt: current_text }
 
     # Image-generation models don't take prior context. Summarizing through
     # an image model would just generate an image as the "summary".
-    if image_model?(prompt_execution.model)
-      return [ "No context available.", prompt ]
-    end
+    return [ [], current_text ] if image_model?(prompt_execution.model)
 
     verbatim_count = Rails.configuration.summarize_conversation_count
     context = pe.build_context(limit: verbatim_count * 4)
 
-    summarized_context =
-      if context.empty?
-        "No context available."
-      elsif context.size <= verbatim_count
-        # Within budget: replay recent turns verbatim, no summarization call.
-        format_transcript(context)
-      else
-        # Overflow: summarize the older slice, keep recent turns verbatim.
-        # Summarization runs on a cheap fixed model, not the user's selected
-        # one. Falls back to the user's model if it isn't available.
-        older = context[0...-verbatim_count].map { |t| strip_inline_images_in_turn(t) }
-        recent = context.last(verbatim_count)
-        sum_uuid, sum_model =
-          summarization_target(llm_options) || [ prompt_execution.llm_uuid, prompt_execution.model ]
-        summary = LlmMetaClient::ServerQuery.new.call(
-          jwt_token, sum_uuid, sum_model,
-          older, "Please summarize the context"
-        )
-        "Summary of earlier conversation: #{summary}\n\nRecent conversation:\n#{format_transcript(recent)}"
-      end
-    summarized_context += "Additional prompt: Responses from the assistant must consist solely of the response body."
-    if with_tools
-      summarized_context += " If a tool call returns an error, do not give up silently — explain the error and what likely caused it (e.g. an invalid argument value)."
+    system_parts = []
+    turns_to_include = context
+
+    if context.size > verbatim_count
+      # Overflow: summarize the older slice as a system-level note, keep
+      # recent turns verbatim. Summarization runs on a cheap fixed model,
+      # not the user's selected one. Falls back to the user's model if it
+      # isn't available.
+      older = context[0...-verbatim_count].map { |t| strip_inline_images_in_turn(t) }
+      recent = context.last(verbatim_count)
+      sum_uuid, sum_model =
+        summarization_target(llm_options) || [ prompt_execution.llm_uuid, prompt_execution.model ]
+      summary = LlmMetaClient::ServerQuery.new.call(
+        jwt_token, sum_uuid, sum_model,
+        older, "Please summarize the context"
+      )
+      system_parts << "Summary of earlier conversation: #{summary}" if summary.present?
+      turns_to_include = recent
     end
 
-    [ summarized_context, prompt ]
+    system_parts << "Responses from the assistant must consist solely of the response body."
+    if with_tools
+      system_parts << "If a tool call returns an error, do not give up silently — explain the error and what likely caused it (e.g. an invalid argument value)."
+    end
+
+    messages = []
+    messages << { role: "system", content: system_parts.join("\n\n") } if system_parts.any?
+
+    # Historical turns as role-tagged messages. Strip embedded data-URI
+    # attachments so we don't re-send tens of KB of base64 per prior turn.
+    turns_to_include.each do |t|
+      stripped = strip_inline_images_in_turn(t)
+      user_text = stripped[:prompt].to_s
+      asst_text = stripped[:response].to_s
+      messages << { role: "user",      content: user_text } if user_text.present?
+      messages << { role: "assistant", content: asst_text } if asst_text.present?
+    end
+
+    [ messages, current_text ]
   end
 
   def image_model?(model_meta_id)
     model_meta_id.to_s.include?("image")
-  end
-
-  def format_transcript(turns)
-    turns.map { |t|
-      stripped = strip_inline_images_in_turn(t)
-      "User: #{stripped[:prompt]}\nAssistant: #{stripped[:response]}"
-    }.join("\n\n")
   end
 
   # Replace embedded data-URI attachments with short placeholders in a

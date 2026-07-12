@@ -1,6 +1,12 @@
 module ApplicationHelper
   include LlmMetaClient::Helpers
 
+  # The app's manually-bumped semantic version, sourced from the VERSION
+  # file at the repo root. See config/initializers/app_version.rb.
+  def app_version
+    AppVersion::CURRENT
+  end
+
   # Subclass of Redcarpet's HTML renderer that wraps assistant-generated
   # images and copyable code blocks (`json`, `csv`) in a `.response-asset`
   # container with Download / Copy action buttons. The buttons are powered

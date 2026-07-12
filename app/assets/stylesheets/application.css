@@ -207,6 +207,17 @@ header {
     letter-spacing: 0;
   }
 
+  .logo .brand-version {
+    /* Semantic app version rendered next to the wordmark. Small, muted,
+       intentionally understated so it doesn't compete with the brand. */
+    margin-left: 8px;
+    font-size: 0.65em;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.4);
+    vertical-align: middle;
+    letter-spacing: 0;
+  }
+
   /* Standalone dots between subdomain / brand / TLD. Sized bigger than
      the surrounding text so they read as substantial separators, and
      given horizontal margin to space the three URL components apart.

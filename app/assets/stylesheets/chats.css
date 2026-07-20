@@ -530,6 +530,13 @@
   gap: 2px;
 }
 
+.tool-name-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .tool-name {
   font-size: 13px;
   font-weight: 500;
@@ -541,6 +548,22 @@
   color: #6b7280;
   line-height: 1.3;
 }
+
+/* MCP tool annotation badges (mirrors the server-side pane badges). */
+.tool-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.tool-badge-readonly    { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.tool-badge-destructive { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.tool-badge-idempotent  { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+.tool-badge-openworld   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 
 /* Generation Settings */
 .generation-settings-field {

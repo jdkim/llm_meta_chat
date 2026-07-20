@@ -237,13 +237,28 @@ export default class extends Controller {
                data-action="change->tool-selector#toggleTool"
                ${this.selectedToolIds.has(String(tool.id)) ? "checked" : ""}>
         <div class="tool-info">
-          <span class="tool-name">${this.#escapeHtml(tool.name)}</span>
+          <span class="tool-name-row">
+            <span class="tool-name">${this.#escapeHtml(tool.name)}</span>${this.#renderToolBadges(tool)}
+          </span>
           ${tool.description ? `<span class="tool-description">${this.#escapeHtml(tool.description)}</span>` : ""}
         </div>
       </label>
     `
       )
       .join("")
+  }
+
+  // MCP 2025-03-26 tool annotations — same semantics as the server-side
+  // pane badges. Only render a badge when the hint is explicitly true;
+  // missing/false = "no claim", not shown.
+  #renderToolBadges(tool) {
+    const a = tool.annotations || {}
+    let out = ""
+    if (a.readOnlyHint === true)    out += ' <span class="tool-badge tool-badge-readonly"    title="Server declared this tool does not modify its environment">Read-only</span>'
+    if (a.destructiveHint === true) out += ' <span class="tool-badge tool-badge-destructive" title="Server declared this tool may perform destructive updates">Destructive</span>'
+    if (a.idempotentHint === true)  out += ' <span class="tool-badge tool-badge-idempotent"  title="Server declared repeated calls have the same effect as a single call">Idempotent</span>'
+    if (a.openWorldHint === true)   out += ' <span class="tool-badge tool-badge-openworld"   title="Server declared this tool interacts with external services (open world)">Open-world</span>'
+    return out
   }
 
   async #fetchToolsForServer(serverUuid, container) {

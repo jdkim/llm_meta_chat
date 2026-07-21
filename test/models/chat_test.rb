@@ -922,4 +922,43 @@ class ChatTest < ActiveSupport::TestCase
       end
     end
   end
+
+  # ----- messages touch: true (activity floats chat in sidebar) ----- #
+  # Message#belongs_to :chat has touch: true so User.chats (ordered by
+  # updated_at) reflects real activity, not just rename events. Guards
+  # against accidental removal of the touch: option — without it, chats
+  # would only float on title changes, defeating the sidebar UX.
+  test "creating a message bumps the chat's updated_at (touch: true)" do
+    pe = PromptNavigator::PromptExecution.create!(
+      prompt: "hi", response: "hello", llm_uuid: "k", model: "gpt-5", configuration: ""
+    )
+    original_updated_at = @chat.updated_at
+    travel_to(1.hour.from_now) do
+      @chat.messages.create!(role: "user", prompt_navigator_prompt_execution: pe)
+    end
+    assert_operator @chat.reload.updated_at, :>, original_updated_at
+  end
+
+  # Composed user-facing story: create chats → add a message to the older
+  # one → that chat floats to the top of the sidebar list. Guards against
+  # either piece (User.has_many order OR Message#belongs_to touch:) silently
+  # regressing without breaking its individual test. This is the exact bug
+  # the two-part fix was meant to prevent.
+  test "adding a message bumps that chat to the top of user.chats (integration)" do
+    user = User.create!(email: "int@example.com", google_id: "g-int", id_token: "t")
+    older = user.chats.create!(title: "older")
+    newer = user.chats.create!(title: "newer")
+    # `newer` is currently newest by updated_at. Add a message to `older`
+    # and it should float above `newer`.
+    pe = PromptNavigator::PromptExecution.create!(
+      prompt: "hi", response: "", llm_uuid: "k", model: "gpt-5", configuration: ""
+    )
+    travel_to(1.hour.from_now) do
+      older.messages.create!(role: "user", prompt_navigator_prompt_execution: pe)
+    end
+    # user.chats is ordered ASC by updated_at; the sidebar's .reverse then
+    # renders newest first. So the LAST element in ASC order == the TOP of
+    # the sidebar after reverse.
+    assert_equal older.uuid, user.chats.reload.map(&:uuid).last
+  end
 end

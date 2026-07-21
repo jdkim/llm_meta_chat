@@ -1,5 +1,5 @@
 class Message < ApplicationRecord
-  belongs_to :chat
+  belongs_to :chat, touch: true
   belongs_to :prompt_navigator_prompt_execution,
              class_name: "PromptNavigator::PromptExecution",
              optional: false

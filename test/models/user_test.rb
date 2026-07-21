@@ -95,4 +95,23 @@ class UserTest < ActiveSupport::TestCase
     assert expired.needs_reauth?
     refute fresh.needs_reauth?
   end
+
+  # --- chats ordering --------------------------------------------------- #
+  # `has_many :chats` orders by updated_at ASC so the sidebar (which
+  # reverses the array to render newest first) gets stable, activity-aware
+  # ordering. Prior behavior (no default order) let Postgres return rows
+  # in an unspecified sequence that shifted on activity, producing the
+  # "new chat lands in the middle of the list" UX bug.
+  test "user.chats returns chats ordered by updated_at ASC" do
+    user = User.create!(email: "ord@example.com", google_id: "g-ord", id_token: "t")
+    a = user.chats.create!(title: "A")
+    b = user.chats.create!(title: "B")
+    c = user.chats.create!(title: "C")
+
+    # Bump `a`'s updated_at to be newer than `c`; the natural sort order
+    # should now be b, c, a (b is oldest, a is most recently touched).
+    travel_to(1.hour.from_now) { a.touch }
+
+    assert_equal [ b.uuid, c.uuid, a.uuid ], user.chats.reload.map(&:uuid)
+  end
 end

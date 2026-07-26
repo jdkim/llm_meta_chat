@@ -55,8 +55,8 @@
                     <% if m['supports_tools'] %>
                       <i class="bi bi-tools model-badge model-badge-tools" title="Tool / function calling"></i>
                     <% end %>
-                    <% if m['favorite'] %>
-                      <i class="bi bi-star-fill model-badge model-badge-favorite" title="One of your favorites"></i>
+                    <% if m['pricing_tier'].present? %>
+                      <span class="model-badge model-badge-price" title="<%= m['pricing_label'] %>"><%= m['pricing_tier'] %></span>
                     <% end %>
                     <% if m['default'] %>
                       <i class="bi bi-bookmark-star-fill model-badge model-badge-default" title="Your default model"></i>

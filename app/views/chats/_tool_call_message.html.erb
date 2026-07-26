@@ -11,10 +11,14 @@
             when nil, "" then nil
             else args.to_s
           end %>
+          <% result = tc["result"] || tc[:result] %>
           <li>
             <code><%= name %></code>
             <% if args_str %>
               — <code><%= args_str %></code>
+            <% end %>
+            <% if result.present? %>
+              <div class="tool-call-result" style="margin-top: 4px; padding: 6px 8px; background: rgba(0,0,0,0.03); border-left: 2px solid #cbd5e1; border-radius: 3px; white-space: pre-wrap; word-break: break-word; font-family: monospace; font-size: 0.85em; max-height: 200px; overflow-y: auto;"><%= result %></div>
             <% end %>
           </li>
         <% end %>

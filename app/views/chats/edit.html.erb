@@ -1,12 +1,26 @@
 <% content_for :title, "Chat - LLM Meta Client" %>
 
 <div class="chat-container" data-chat-id="<%= @chat&.id %>">
+  <% if current_user&.super_user? && @chat&.user_id == current_user&.id %>
+    <div class="chat-admin-toolbar">
+      <%= button_to (@chat.public? ? "Unpublish (currently public)" : "Publish to showcase"),
+                     toggle_public_chat_path(@chat.uuid),
+                     method: :patch,
+                     class: "chat-admin-toggle-public" %>
+    </div>
+  <% end %>
+
   <div class="chat-messages" id="chat-messages">
     <div id="messages-list">
       <%= render partial: "chats/messages_list", locals: { messages: @chat&.messages } %>
     </div>
   </div>
 
+  <% if @chat&.read_only_for?(current_user) %>
+    <div class="chat-readonly-notice">
+      <p>👁️  You’re viewing a public conversation in read-only mode. <%= link_to "Start your own chat", root_path %> to send a message or fork a branch.</p>
+    </div>
+  <% else %>
   <div class="chat-input-container">
     <%= form_with url: add_prompt_chat_path(@chat.uuid), method: :post, class: "chat-form", data: { controller: "chats-form model-picker", guest: current_user.nil?, action: "submit->chats-form#submit model-picker:changed->chats-form#updateSubmitButton dragover->chats-form#onDragOver dragleave->chats-form#onDragLeave drop->chats-form#onDrop" } do |f| %>
       <div class="image-preview" data-chats-form-target="imagePreview" style="display: none;">
@@ -96,6 +110,7 @@
       <%= f.hidden_field :branch_from_uuid, value: @branch_from_uuid || params.dig(:chat, :branch_from_uuid) %>
     <% end %>
   </div>
+  <% end %>
 </div>
 
 

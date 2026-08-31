@@ -7,6 +7,13 @@ class PromptsController < ApplicationController
     @prompt_execution = PromptNavigator::PromptExecution.find_by!(execution_id: params[:id])
     @message = Message.where(prompt_navigator_prompt_execution: @prompt_execution).order(:created_at).first
     @chat = @message.chat
+    # Same visibility rule as chats#show: owner (or same anon session) OR
+    # public. Without this guard, anyone knowing a PE uuid could read a
+    # private chat by hitting /prompts/:uuid. Public chats intentionally
+    # allow the click-through so history-pane navigation works read-only.
+    unless Chat.publicly_viewable.or(visible_chats_scope).exists?(id: @chat.id)
+      raise ActiveRecord::RecordNotFound
+    end
     @messages = @chat.ordered_messages
 
     # Initialize chat context

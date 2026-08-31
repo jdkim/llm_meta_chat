@@ -4,13 +4,17 @@ class ChatsController < ApplicationController
   include PromptNavigator::HistoryManageable
   # Allow access without login
   skip_before_action :authenticate_user!, raise: false
-  before_action :authenticate_user!, only: [ :update_title, :download_csv, :download_selected_csv, :batch_destroy ]
+  before_action :authenticate_user!, only: [ :update_title, :download_csv, :download_selected_csv, :batch_destroy, :toggle_public ]
 
   def show
     # Initialize chat context
     initialize_chat visible_chats_scope
 
-    @chat = visible_chats_scope.includes(:messages).find_by!(uuid: params[:id])
+    # show is the ONLY action that widens lookup to include admin-flagged
+    # public chats — every other action (update_title, add_prompt, destroy,
+    # chat_stream, ...) stays owner-gated via visible_chats_scope, so a
+    # non-owner viewing a public chat can read the tree but cannot write.
+    @chat = Chat.publicly_viewable.or(visible_chats_scope).includes(:messages).find_by!(uuid: params[:id])
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat.ordered_messages
 
@@ -39,6 +43,9 @@ class ChatsController < ApplicationController
     @chat = nil
     @messages = []
     initialize_history []
+    # Admin-curated showcase — visible to anyone landing on `/`. Empty when
+    # no chats are flagged, so the view can suppress the section entirely.
+    @public_chats = Chat.publicly_viewable.order(created_at: :desc).limit(10)
 
     jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
@@ -150,6 +157,18 @@ class ChatsController < ApplicationController
       title: title,
       truncated_title: title.truncate(30)
     }
+  end
+
+  # Admin-curated public showcase. Strict gate: only a super_user AND the
+  # chat owner may flip this. visible_chats_scope already narrows to the
+  # signed-in user's own chats, so ownership is enforced by the lookup; the
+  # explicit super_user? check adds the admin gate on top.
+  def toggle_public
+    chat = visible_chats_scope.find_by!(uuid: params[:id])
+    return head :forbidden unless current_user.super_user?
+    chat.update!(public: !chat.public?)
+    redirect_to chat_path(chat.uuid),
+                notice: chat.public? ? "Chat is now public." : "Chat is no longer public."
   end
 
   def start_new

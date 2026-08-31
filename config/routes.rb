@@ -14,6 +14,7 @@ Rails.application.routes.draw do
     end
     member do
       patch :update_title
+      patch :toggle_public
       get :download_csv
       post :add_prompt
     end

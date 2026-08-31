@@ -6,6 +6,18 @@ class Chat < ApplicationRecord
 
   before_create :set_uuid
 
+  # Chats an admin (super_user + owner) flagged for public showcase on the
+  # landing page. Reachable to anyone at /chats/:uuid via chats#show, which
+  # composes this with visible_chats_scope. Write actions stay owner-gated.
+  scope :publicly_viewable, -> { where(public: true) }
+
+  # A public chat viewed by anyone other than its owner is a read-only
+  # showcase — hide the message-input form, branch/delete affordances, and
+  # (defence-in-depth) the write endpoints stay 404 via visible_chats_scope.
+  def read_only_for?(user)
+    public? && user_id != user&.id
+  end
+
   # Add a user message to the chat. `image` and `document` are mutually
   # exclusive attachments — the form surface only permits one at a time;
   # if both slip through, image takes precedence.

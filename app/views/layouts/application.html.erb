@@ -63,7 +63,9 @@
   </div>
   <div class="sidebar sidebar-right">
     <div id="history-sidebar">
-      <%= history_list(->(execution_id) { prompt_path(execution_id) }, active_uuid: @active_message_uuid, delete_path: ->(execution_id) { prompt_path(execution_id) }) %>
+      <%= history_list(->(execution_id) { prompt_path(execution_id) },
+                       active_uuid: @active_message_uuid,
+                       delete_path: (@chat&.read_only_for?(current_user) ? nil : ->(execution_id) { prompt_path(execution_id) })) %>
     </div>
   </div>
 </div>

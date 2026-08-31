@@ -10,17 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_31_150709) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_31_153221) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "chats", force: :cascade do |t|
     t.timestamptz "created_at"
+    t.boolean "public", default: false, null: false
     t.text "session_id"
     t.text "title"
     t.timestamptz "updated_at"
     t.bigint "user_id"
     t.text "uuid"
+    t.index ["public"], name: "idx_chats_public_when_true", where: "(public = true)"
     t.index ["session_id"], name: "idx_2679977_index_chats_on_session_id"
     t.index ["user_id"], name: "idx_2679977_index_chats_on_user_id"
   end

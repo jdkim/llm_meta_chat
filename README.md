@@ -119,7 +119,7 @@ bin/ci                      # full CI pipeline: rubocop, audits, brakeman, tests
 
 If you use this software in your research, please cite:
 
-> Kim, J.-D. (2026). *AIbranch: A platform for branched multi-model LLM conversations*. *SoftwareX*. <https://www.sciencedirect.com/science/article/pii/S2352711026004747>
+> Kim, J.-D. (2026). *AIbranch: A platform for branched multi-model LLM conversations*. *SoftwareX*. <https://doi.org/10.1016/j.softx.2026.102983>
 
 ## Related repositories
 

@@ -115,6 +115,12 @@ bin/rails test:system       # system tests (browser)
 bin/ci                      # full CI pipeline: rubocop, audits, brakeman, tests, system tests
 ```
 
+## Citation
+
+If you use this software in your research, please cite:
+
+> Kim, J.-D. (2026). *AIbranch: A platform for branched multi-model LLM conversations*. *SoftwareX*. <https://www.sciencedirect.com/science/article/pii/S2352711026004747>
+
 ## Related repositories
 
 - [`llm_meta_server`](https://github.com/jdkim/llm_meta_server) — the backend that this app talks to (install this first)

@@ -14,7 +14,10 @@ class ChatsController < ApplicationController
     # public chats — every other action (update_title, add_prompt, destroy,
     # chat_stream, ...) stays owner-gated via visible_chats_scope, so a
     # non-owner viewing a public chat can read the tree but cannot write.
-    @chat = Chat.publicly_viewable.or(visible_chats_scope).includes(:messages).find_by!(uuid: params[:id])
+    # .unscope(:order) — visible_chats_scope resolves to `current_user.chats`,
+    # a has_many association that carries an implicit order; Rails 8.1's
+    # `.or` rejects structurally-incompatible relations, so strip it here.
+    @chat = Chat.publicly_viewable.or(visible_chats_scope.unscope(:order)).includes(:messages).find_by!(uuid: params[:id])
     set_active_chat_uuid(@chat&.uuid)
     @messages = @chat.ordered_messages
 

@@ -11,7 +11,7 @@ class PromptsController < ApplicationController
     # public. Without this guard, anyone knowing a PE uuid could read a
     # private chat by hitting /prompts/:uuid. Public chats intentionally
     # allow the click-through so history-pane navigation works read-only.
-    unless Chat.publicly_viewable.or(visible_chats_scope).exists?(id: @chat.id)
+    unless Chat.publicly_viewable.or(visible_chats_scope.unscope(:order)).exists?(id: @chat.id)
       raise ActiveRecord::RecordNotFound
     end
     @messages = @chat.ordered_messages

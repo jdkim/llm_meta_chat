@@ -15,7 +15,7 @@ This app never talks to a provider API directly — it always goes through `llm_
 
 - Ruby 3.4.9 (see `.ruby-version`)
 - Rails 8.1.2
-- SQLite 3
+- PostgreSQL
 - Node.js (for asset compilation)
 - **A running instance of [`llm_meta_server`](https://github.com/jdkim/llm_meta_server)** — this app cannot function without a reachable backend. Set it up first.
 
@@ -76,7 +76,7 @@ This app never talks to a provider API directly — it always goes through `llm_
    bin/rails db:setup
    ```
 
-   Creates the database, runs migrations, and loads any seed data. SQLite is used by default; no separate DB service is required.
+   Creates the database, runs migrations, and loads any seed data. Requires a running PostgreSQL server; connection details are configured in `config/database.yml`.
 
 5. **Start the application**
 

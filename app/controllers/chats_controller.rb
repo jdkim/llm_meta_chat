@@ -5,6 +5,9 @@ class ChatsController < ApplicationController
   # Allow access without login
   skip_before_action :authenticate_user!, raise: false
   before_action :authenticate_user!, only: [ :update_title, :download_csv, :download_selected_csv, :batch_destroy, :toggle_public ]
+  # Sidebar's Demo chats pane needs @public_chats on every render path.
+  # The landing hero (chats#new only) additionally uses @featured_public_chat.
+  before_action :load_public_chats
 
   def show
     # Initialize chat context
@@ -46,9 +49,6 @@ class ChatsController < ApplicationController
     @chat = nil
     @messages = []
     initialize_history []
-    # Admin-curated showcase — visible to anyone landing on `/`. Empty when
-    # no chats are flagged, so the view can suppress the section entirely.
-    @public_chats = Chat.publicly_viewable.order(created_at: :desc).limit(10)
 
     jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
@@ -229,6 +229,16 @@ class ChatsController < ApplicationController
   end
 
   private
+
+  # Admin-curated public chats for the sidebar's "Demo chats" pane. Set on
+  # every action so any sidebar re-render (including Turbo Stream updates
+  # from chats#create) keeps the pane populated. @featured_public_chat is
+  # the oldest public chat (typically the paper example) and drives the
+  # landing hero's CTA.
+  def load_public_chats
+    @public_chats = Chat.publicly_viewable.order(created_at: :desc).limit(10).to_a
+    @featured_public_chat = @public_chats.min_by(&:created_at)
+  end
 
   MAX_IMAGE_BYTES = 8 * 1024 * 1024 # 8 MB
   # 1 MB cap for text documents — they inline directly into the prompt as a

@@ -2,21 +2,12 @@
 
 <div class="chat-container" data-chat-id="<%= @chat&.id %>">
   <div class="chat-messages" id="chat-messages">
+    <% if @messages.blank? %>
+      <%= render "chats/landing_hero", featured_chat: @featured_public_chat %>
+    <% end %>
     <div id="messages-list">
       <%= render partial: "chats/messages_list", locals: { messages: @chat&.messages } %>
     </div>
-
-    <% if @public_chats&.any? %>
-      <section class="public-chats-showcase">
-        <h2>Browse a public conversation</h2>
-        <p>See how AIbranch handles a real multi-model, branching chat — no login required.</p>
-        <ul>
-          <% @public_chats.each do |c| %>
-            <li><%= link_to (c.title.presence || "(untitled)"), chat_path(c.uuid) %></li>
-          <% end %>
-        </ul>
-      </section>
-    <% end %>
   </div>
 
   <div class="chat-input-container">

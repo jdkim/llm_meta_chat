@@ -1,0 +1,19 @@
+<% # Read-only "Demo chats" pane in the left sidebar — lists admin-curated
+   # public chats. Distinct from the user's own chats list (which lives
+   # below this pane) so newcomers can browse example conversations
+   # without needing to sign in. No batch selection, no per-card menu.
+   chats = local_assigns[:chats] || [] %>
+<% if chats.any? %>
+  <div class="demo-chats-pane">
+    <h2>Demo chats</h2>
+    <ul class="demo-chats-list">
+      <% chats.each do |c| %>
+        <li>
+          <%= link_to (c.title.presence || "(untitled)"), chat_path(c.uuid),
+                       class: "demo-chats-link",
+                       title: c.title.to_s %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

@@ -1252,3 +1252,217 @@
   color: #991b1b;
   font-size: 13px;
 }
+
+/* Demo chats pane — read-only list of admin-curated public chats, sits
+   above the user's own "Chats" pane in the left sidebar. Deliberately
+   understated so it doesn't compete with the user's own chat list. */
+.demo-chats-pane {
+  padding: 8px 12px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.demo-chats-pane h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.demo-chats-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.demo-chats-list li {
+  margin: 2px 0;
+}
+.demo-chats-link {
+  display: block;
+  padding: 4px 6px;
+  color: #374151;
+  text-decoration: none;
+  font-size: 13px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.demo-chats-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Landing hero — first-run pitch in the empty dialog area. Removed via
+   Turbo Stream on first message send (chats/create.turbo_stream.erb). */
+.landing-hero {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 32px 28px;
+  background: linear-gradient(135deg, #f0fdfa 0%, #eff6ff 100%);
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+  text-align: center;
+}
+.landing-hero h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px;
+}
+.landing-hero-tagline {
+  font-size: 15px;
+  color: #334155;
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.landing-hero-cta {
+  font-size: 15px;
+  color: #0f172a;
+  margin: 16px 0 8px;
+}
+.landing-hero-cta-link {
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.landing-hero-cta-link:hover {
+  color: #115e59;
+}
+.landing-hero-hint {
+  font-size: 13px;
+  color: #64748b;
+  margin: 12px 0 0;
+}
+
+/* Landing-hero example cards — three side-by-side mini-mockups illustrating
+   the platform's core features (branching, model switching, MCP tools). */
+.landing-hero-examples {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 24px 0;
+}
+@media (max-width: 720px) {
+  .landing-hero-examples { grid-template-columns: 1fr; }
+}
+.landing-hero-example {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+.lh-viz {
+  min-height: 120px;
+  padding: 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #334155;
+}
+.lh-caption { font-size: 12px; color: #475569; line-height: 1.4; }
+.lh-caption strong { display: block; color: #0f172a; font-size: 13px; margin-bottom: 2px; }
+
+/* --- Branching viz — mirrors the app's History pane visual language.
+   Single vertical column of prompt-cards; straight ↑ between adjacent
+   parent→child pairs; a curved SVG arrow arcs to the LEFT for the
+   non-adjacent parent→child (the branch). --- */
+.lh-viz-branch {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  padding: 8px 8px 8px 4px;
+}
+.lh-branch-arc {
+  width: 22px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+.lh-branch-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lh-node {
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #334155;
+}
+.lh-node-active { border-color: #0ea5e9; box-shadow: 0 0 0 2px #bae6fd; }
+.lh-node-alt    { border-color: #f59e0b; background: #fffbeb; color: #78350f; }
+.lh-branch-updown {
+  align-self: center;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1;
+  padding: 1px 0;
+}
+.lh-branch-gap {
+  /* Vertical whitespace that separates the "current thread" from the
+     "branched-off alternate" — same visual break the History pane uses
+     to signal a fork. */
+  height: 10px;
+}
+
+/* --- Model-switch viz --- */
+.lh-msg { padding: 3px 6px; border-radius: 4px; font-size: 11px; line-height: 1.4; }
+.lh-msg-user { background: #dbeafe; color: #1e3a8a; align-self: flex-end; max-width: 85%; }
+.lh-msg-asst { background: #fff; border: 1px solid #e5e7eb; color: #334155; max-width: 90%; }
+.lh-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.lh-badge-claude { background: #fef3c7; color: #92400e; }
+.lh-badge-gpt    { background: #dcfce7; color: #14532d; }
+
+/* --- MCP tools viz --- */
+.lh-viz-tools { padding-top: 6px; }
+.lh-tool-header {
+  font-weight: 600;
+  color: #0f172a;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 4px;
+}
+.lh-tool-count {
+  display: inline-block;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+.lh-tool-item { padding: 3px 6px; display: flex; align-items: center; gap: 6px; }
+.lh-tool-item-off { color: #94a3b8; }
+.lh-check {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+.lh-check-on { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }

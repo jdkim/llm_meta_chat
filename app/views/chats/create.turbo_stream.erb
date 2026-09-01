@@ -2,6 +2,11 @@
 <%= turbo_stream.update "message-input" do %>
 <% end %>
 
+<% # Remove the landing hero once the first message is in flight — it's a
+   # landing-only element and would otherwise linger above the appended
+   # messages. Safe when the hero isn't present (Turbo no-ops on missing id). %>
+<%= turbo_stream.remove "landing-hero" %>
+
 <% # User message is already shown by JavaScript on form submit %>
 <% # Only render assistant message here %>
 

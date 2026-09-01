@@ -1,0 +1,82 @@
+<% # Ad box shown on the landing page (chats#new, no messages yet) — fills
+   # the otherwise-empty dialog area with a quick pitch and one prominent
+   # CTA to a live example public chat. Removed via Turbo Stream on the
+   # first message submission (see chats/create.turbo_stream.erb).
+   featured = local_assigns[:featured_chat] %>
+<div id="landing-hero" class="landing-hero">
+  <h1>AIbranch — a place for exploratory conversations</h1>
+  <p class="landing-hero-tagline">
+    Switch models mid-conversation. Branch off any past turn to try a different direction. Bring your own MCP tools.
+  </p>
+
+  <div class="landing-hero-examples">
+    <%# --- 1. Branching — root at top, arrows point parent→child (↓).
+         The root ("What is Ollama?") has two children: "Give an example"
+         (the linear continuation, directly below, connected by ↓) and
+         "Compare with vLLM" (the alternate branch, further below,
+         connected by the curved arrow arcing left). --- %>
+    <div class="landing-hero-example">
+      <div class="lh-viz lh-viz-branch">
+        <svg class="lh-branch-arc" viewBox="0 0 22 100" preserveAspectRatio="none" aria-hidden="true">
+          <%# Curve from the top card (What is Ollama?, the root) down to
+              the bottom card (Compare with vLLM, the branch), arrowhead
+              pointing into the bottom card. viewBox height chosen to be
+              close to the actual rendered pixel height so the endpoints
+              land at each node's vertical center after the stretch.
+              Endpoints (y=12 and y=88) approximate the node centers. %>
+          <path d="M 22 12 C 2 12, 2 88, 22 88"
+                stroke="#94a3b8" stroke-width="1.2" fill="none"
+                stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>
+          <polygon points="16 84, 22 88, 16 92" fill="#94a3b8"/>
+        </svg>
+        <div class="lh-branch-stack">
+          <div class="lh-node">What is Ollama?</div>
+          <div class="lh-branch-updown">↓</div>
+          <div class="lh-node lh-node-active">Give an example</div>
+          <div class="lh-branch-gap"></div>
+          <div class="lh-node lh-node-alt">Compare with vLLM</div>
+        </div>
+      </div>
+      <div class="lh-caption">
+        <strong>Branch any past turn</strong>
+        <span>Fork the thread to explore a different direction — the whole tree stays navigable.</span>
+      </div>
+    </div>
+
+    <%# --- 2. Model switching --- %>
+    <div class="landing-hero-example">
+      <div class="lh-viz lh-viz-models">
+        <div class="lh-msg lh-msg-user">👤 explain in one line</div>
+        <div class="lh-msg lh-msg-asst"><span class="lh-badge lh-badge-claude">🤖 Claude</span> A tool to run LLMs locally.</div>
+        <div class="lh-msg lh-msg-user">👤 now as a haiku</div>
+        <div class="lh-msg lh-msg-asst"><span class="lh-badge lh-badge-gpt">🤖 GPT-5</span> Silent local mind…</div>
+      </div>
+      <div class="lh-caption">
+        <strong>Switch models mid-chat</strong>
+        <span>Try the same conversation across OpenAI, Anthropic, Google, or a local Ollama.</span>
+      </div>
+    </div>
+
+    <%# --- 3. MCP tools --- %>
+    <div class="landing-hero-example">
+      <div class="lh-viz lh-viz-tools">
+        <div class="lh-tool-header">🔧 Tools <span class="lh-tool-count">2</span></div>
+        <div class="lh-tool-item"><span class="lh-check lh-check-on">✓</span> TogoMCP</div>
+        <div class="lh-tool-item"><span class="lh-check lh-check-on">✓</span> PubDictionaries</div>
+        <div class="lh-tool-item lh-tool-item-off"><span class="lh-check">·</span> Brave Search</div>
+        <div class="lh-tool-item lh-tool-item-off"><span class="lh-check">·</span> Your own MCP server…</div>
+      </div>
+      <div class="lh-caption">
+        <strong>Bring your own MCP tools</strong>
+        <span>Register any MCP server; enable per-chat. Public MCP servers work without a login.</span>
+      </div>
+    </div>
+  </div>
+
+  <% if featured %>
+    <p class="landing-hero-cta">
+      → See a live example: <%= link_to (featured.title.presence || "browse example"), chat_path(featured.uuid), class: "landing-hero-cta-link" %>
+    </p>
+  <% end %>
+  <p class="landing-hero-hint">Or type your first message below to start your own.</p>
+</div>

@@ -235,14 +235,33 @@ export default class extends Controller {
       return
     }
     let message = "Stream interrupted."
-    try { if (event.data) message = JSON.parse(event.data).message || message } catch {}
+    let code = null
+    try {
+      const parsed = event.data ? JSON.parse(event.data) : {}
+      message = parsed.message || message
+      code = parsed.code || null
+    } catch {}
+
+    // Prefix + role-label pair per error code from the hub's SSE `event: error`
+    // shape. Keeps the message text as-is (server owns wording) but adds a
+    // tight visual label so users don't have to parse the whole sentence to
+    // know what kind of failure it was.
+    const codeUX = {
+      mcp_unavailable:    { label: "⚠️ MCP tool unavailable", prefix: "MCP tool unavailable" },
+      mcp_protocol_error: { label: "⚠️ MCP protocol error",   prefix: "MCP protocol error" },
+      timeout:            { label: "⚠️ Upstream timeout",     prefix: "Upstream timeout" },
+      rate_limit:         { label: "⚠️ Rate limited",         prefix: "Rate limited" },
+      api_key_required:   { label: "⚠️ API key required",     prefix: "API key required" },
+      argument_error:     { label: "⚠️ Bad request",          prefix: "Bad request" },
+      model_not_found:    { label: "⚠️ Model not found",      prefix: "Model not found" },
+    }[code] || { label: "⚠️ error", prefix: "error" }
 
     // Swap the transient phase label ("🤔 Thinking…" / "🤖 streaming…") for
     // a clear failure indicator so the bubble doesn't sit forever pretending
     // to be in flight — this used to leave users staring at a spinning
     // reasoning block when the upstream provider returned e.g. HTTP 503.
     const role = this.element.querySelector(".message-role")
-    if (role) role.textContent = "⚠️ error"
+    if (role) role.textContent = codeUX.label
     this.element.classList.add("stream-errored")
 
     // Fold the pulsing "reasoning" section (it stops the animation and
@@ -253,7 +272,7 @@ export default class extends Controller {
 
     const errEl = document.createElement("p")
     errEl.className = "stream-error"
-    errEl.textContent = `[error] ${message}`
+    errEl.textContent = `[${codeUX.prefix}] ${message}`
     this.contentTarget.appendChild(errEl)
     this.#close()
     // Make the DOM node inert (parallel to #onDone) so Turbo's page cache

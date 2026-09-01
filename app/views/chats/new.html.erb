@@ -98,9 +98,10 @@
                 <%= render "shared/model_grid", llm_families: @llm_families, stimulus_controller: "model-picker" %>
               </div>
             </div>
-            <% if user_signed_in? %>
-              <%= render "shared/tool_selector_field", stimulus_controller: "tool-selector" %>
-            <% end %>
+            <% # Tool picker: signed-in users see their own + public MCP servers;
+               # anon visitors see only public_to_anonymous servers via
+               # McpServer.visible_to(nil) — no guard needed here. %>
+            <%= render "shared/tool_selector_field", stimulus_controller: "tool-selector" %>
             <%= render "shared/generation_settings_field", stimulus_controller: "generation-settings" %>
           </div>
         </div>

@@ -44,7 +44,7 @@
 /config/credentials/*.key
 /config/credentials/development.yml.enc
 
-/.claude/settings.json
-/.claude/settings.local.json
+# Claude Code local state (settings, worktrees)
+/.claude/
 # vim backup files
 *~

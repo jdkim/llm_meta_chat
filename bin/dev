@@ -1,2 +1,15 @@
 #!/usr/bin/env ruby
+
+# bin/dev is the development entrypoint, so pin the environment here instead
+# of inheriting it from the shell. An exported RAILS_ENV=production — easily
+# left behind by a `RAILS_ENV=production bin/rails console` session — would
+# otherwise boot this server in production mode: against the production
+# database, and serving no CSS at all, since production expects precompiled
+# assets in public/assets and development never creates them.
+#
+# This is deliberately unconditional. Rails' own `-e` flag cannot override an
+# RAILS_ENV that is already set (server_command.rb uses `ENV["RAILS_ENV"] ||=`),
+# so to run any other environment invoke `bin/rails server -e <env>` directly.
+ENV["RAILS_ENV"] = "development"
+
 exec "./bin/rails", "server", *ARGV

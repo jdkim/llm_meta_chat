@@ -71,6 +71,22 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Weighing the options."
   end
 
+  # The controller must still FORWARD thinking events to the browser, not just
+  # accumulate them — otherwise the live streaming block never appears.
+  test "still forwards thinking events to the client while accumulating them" do
+    setup_pending_assistant_turn
+    stub_stream_assistant_response!(events: [
+      { event: "thinking", data: { "delta" => "live-delta" } },
+      { event: "message",  data: { "delta" => "Paris." } }
+    ], assembled: "Paris.")
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    assert_includes response.body, "event: thinking"
+    assert_match(/event: thinking\ndata: .*live-delta/, response.body)
+  end
+
   test "stores no reasoning when the model emitted none" do
     setup_pending_assistant_turn
     stub_stream_assistant_response!(events: [

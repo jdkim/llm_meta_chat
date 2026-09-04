@@ -15,6 +15,16 @@
       <%= doc if doc %>
       <%= simple_format(text) %>
     <% else %>
+      <%- if message.reasoning.present? -%>
+        <%# Collapsed by default: the answer is the point, the reasoning is
+            available on demand. Same classes as the live streaming block in
+            message_stream_controller.js, minus `thinking-active` (no dots
+            once it has finished), so both look identical. %>
+        <details class="message-thinking">
+          <summary>Reasoning</summary>
+          <div class="message-thinking-content"><%= message.reasoning %></div>
+        </details>
+      <%- end -%>
       <%= assistant_response_markdown(message.prompt_navigator_prompt_execution&.response) %>
     <% end %>
   </div>

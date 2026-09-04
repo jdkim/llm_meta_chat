@@ -35,6 +35,71 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
     assert_nil @pe.reload.response
   end
 
+  # Reasoning used to live only in the DOM of the tab that streamed it, so it
+  # vanished on reload. These guard the wiring that stores it on the message.
+  test "persists streamed reasoning alongside the response" do
+    setup_pending_assistant_turn
+    stub_stream_assistant_response!(events: [
+      { event: "thinking", data: { "delta" => "First I check " } },
+      { event: "thinking", data: { "delta" => "the constraints." } },
+      { event: "message",  data: { "delta" => "Paris." } }
+    ], assembled: "Paris.")
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    saved = @chat.messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: @pe.id)
+    assert_not_nil saved
+    assert_equal "First I check the constraints.", saved.reasoning
+    assert_equal "Paris.", @pe.reload.response
+  end
+
+  test "renders the persisted Reasoning block in the saved message html" do
+    setup_pending_assistant_turn
+    stub_stream_assistant_response!(events: [
+      { event: "thinking", data: { "delta" => "Weighing the options." } },
+      { event: "message",  data: { "delta" => "Paris." } }
+    ], assembled: "Paris.")
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    # The `saved` event carries the rendered partial the client swaps in, so
+    # the persisted block reaches the page without a reload.
+    assert_includes response.body, "message-thinking"
+    assert_includes response.body, "Reasoning"
+    assert_includes response.body, "Weighing the options."
+  end
+
+  test "stores no reasoning when the model emitted none" do
+    setup_pending_assistant_turn
+    stub_stream_assistant_response!(events: [
+      { event: "message", data: { "delta" => "Paris." } }
+    ], assembled: "Paris.")
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    saved = @chat.messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: @pe.id)
+    assert_nil saved.reasoning
+    assert_not_includes response.body, "message-thinking"
+  end
+
+  test "keeps reasoning received before a mid-stream cancel" do
+    setup_pending_assistant_turn
+    stub_stream_assistant_response_with_disconnect!(
+      deltas: [ "Hello, ", "world" ],
+      thinking: [ "Half a thought" ]
+    )
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    saved = @chat.messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: @pe.id)
+    assert_equal "Half a thought", saved.reasoning
+    assert_equal "Hello, world", @pe.reload.response
+  end
+
   private
 
   # ApplicationController has `allow_browser versions: :modern`, which
@@ -63,8 +128,9 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
   # as SSE message events and then raises ClientDisconnected — the same
   # exception ActionController::Live raises when the browser closes its
   # EventSource. teardown restores the original.
-  def stub_stream_assistant_response_with_disconnect!(deltas:)
-    events = deltas.map { |d| { event: "message", data: { "delta" => d } } }
+  def stub_stream_assistant_response_with_disconnect!(deltas:, thinking: [])
+    events = thinking.map { |t| { event: "thinking", data: { "delta" => t } } } +
+             deltas.map { |d| { event: "message", data: { "delta" => d } } }
     Chat.class_eval do
       alias_method :__orig_stream_assistant_response, :stream_assistant_response unless method_defined?(:__orig_stream_assistant_response)
     end
@@ -76,11 +142,32 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  def restore_chat_stream_assistant_response!
-    return unless Chat.method_defined?(:__orig_stream_assistant_response)
+  def stub_stream_assistant_response!(events:, assembled:)
     Chat.class_eval do
-      alias_method :stream_assistant_response, :__orig_stream_assistant_response
-      remove_method :__orig_stream_assistant_response
+      alias_method :__orig_stream_assistant_response, :stream_assistant_response unless method_defined?(:__orig_stream_assistant_response)
+      alias_method :__orig_generate_title, :generate_title unless method_defined?(:__orig_generate_title)
+    end
+    Chat.class_eval do
+      define_method(:stream_assistant_response) do |*_, **__, &block|
+        events.each { |ev| block&.call(ev) }
+        assembled
+      end
+      define_method(:generate_title) { |*_, **__| nil }
+    end
+  end
+
+  def restore_chat_stream_assistant_response!
+    if Chat.method_defined?(:__orig_stream_assistant_response)
+      Chat.class_eval do
+        alias_method :stream_assistant_response, :__orig_stream_assistant_response
+        remove_method :__orig_stream_assistant_response
+      end
+    end
+    if Chat.method_defined?(:__orig_generate_title)
+      Chat.class_eval do
+        alias_method :generate_title, :__orig_generate_title
+        remove_method :__orig_generate_title
+      end
     end
   end
 end

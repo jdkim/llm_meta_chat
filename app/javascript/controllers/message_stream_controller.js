@@ -61,19 +61,25 @@ export default class extends Controller {
       // markdown; remove the transient tool-call bubbles so reload and live look
       // the same.
       this.#removeTransientToolCallBubbles()
-      // Fold the live transient sections now (not on `done`) — `done` fires
-      // AFTER the synchronous title-generation round-trip, which can take
-      // several seconds and would leave the reasoning section open the
-      // whole time. Saved is the natural moment: the final message is
-      // already persisted and rendered.
+      // The saved bubble carries its own (collapsed) Reasoning block, so drop
+      // the live one rather than showing two. This is also what makes the
+      // reasoning survive a reload: what the user sees from here on is the
+      // persisted copy, not the streamed DOM node.
+      this.#removeThinkingBlock()
+      // Fold the remaining live transient sections now (not on `done`) —
+      // `done` fires AFTER the synchronous title-generation round-trip, which
+      // can take several seconds and would leave sections open the whole
+      // time. Saved is the natural moment: the final message is already
+      // persisted and rendered.
       this.#foldTransientSections()
     } catch {}
   }
 
-  // Thinking deltas (Ollama hybrid models with `think: true`) — rendered
-  // live in a <details> block above the assistant content. Ephemeral:
-  // the server never persists thinking, so this block won't reappear on
-  // page reload.
+  // Thinking deltas (Ollama hybrid models with `think: true`, and OpenAI
+  // reasoning summaries) — rendered live in a <details> block above the
+  // assistant content. This node is transient: on `saved` it is removed and
+  // replaced by the persisted Reasoning block inside the saved message, which
+  // is what survives a page reload.
   #onThinking(event) {
     let delta
     try { delta = JSON.parse(event.data).delta } catch { return }
@@ -90,13 +96,13 @@ export default class extends Controller {
     if (this._thinkingContent) return this._thinkingContent
     const details = document.createElement("details")
     // `thinking-active` triggers the dots animation on the summary while
-    // reasoning is in progress; it's removed by #foldTransientSections
-    // at end-of-stream. The body is fixed-height + scrollable while open
-    // (see chats.css) so a long reasoning trace doesn't dominate the
-    // screen even when expanded.
+    // reasoning is in progress; #foldTransientSections drops the class at
+    // end-of-stream, and #onSaved removes this node outright. The body is
+    // fixed-height + scrollable while open (see chats.css) so a long
+    // reasoning trace doesn't dominate the screen even when expanded.
     details.className = "message-thinking thinking-active"
-    // Open during streaming; #foldTransientSections collapses it once
-    // the assistant's final message is saved.
+    // Open during streaming; once the message is saved this node goes away
+    // and the persisted (collapsed) block takes its place.
     details.open = true
     const summary = document.createElement("summary")
     summary.textContent = "Reasoning"
@@ -123,9 +129,9 @@ export default class extends Controller {
 
   // Collapse the transient streaming-only sections (thinking + live
   // tool-call bubbles) so the assistant's final message gets the focus.
-  // Called from #onDone and cancel(); #onSaved goes further and removes
-  // the live tool-call bubbles outright, so this is mostly cosmetic for
-  // the no-save (empty content) and cancel paths.
+  // Called from #onDone and cancel(); #onSaved goes further and removes both
+  // the thinking block and the live tool-call bubbles outright, so this is
+  // mostly cosmetic for the no-save (empty content) and cancel paths.
   #foldTransientSections() {
     if (this._thinkingDetails) {
       this._thinkingDetails.open = false

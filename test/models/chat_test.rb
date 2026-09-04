@@ -648,6 +648,31 @@ class ChatTest < ActiveSupport::TestCase
     end
   end
 
+  test "finalize_streamed_response stores the reasoning on the assistant message" do
+    pe, _m = @chat.add_user_message("hi", "k", "gpt-5", nil, llm_platform: "openai")
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options, [ { uuid: "k", llm_type: "openai" } ]) do
+      msg = @chat.finalize_streamed_response(pe, "the response", "jwt", reasoning: "step one, step two")
+
+      assert_equal "step one, step two", msg.reasoning
+      assert_equal "step one, step two", msg.reload.reasoning
+    end
+  end
+
+  test "finalize_streamed_response leaves reasoning nil when the model emitted none" do
+    pe, _m = @chat.add_user_message("hi", "k", "gpt-5", nil, llm_platform: "openai")
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_options, [ { uuid: "k", llm_type: "openai" } ]) do
+      # Both the default and an empty accumulator (nothing streamed) must
+      # store NULL rather than an empty string, so the view's `.present?`
+      # check doesn't render an empty Reasoning block.
+      assert_nil @chat.finalize_streamed_response(pe, "a", "jwt").reasoning
+
+      pe2, _m2 = @chat.add_user_message("hi again", "k", "gpt-5", nil, llm_platform: "openai")
+      assert_nil @chat.finalize_streamed_response(pe2, "b", "jwt", reasoning: "").reasoning
+    end
+  end
+
   test "finalize_streamed_response persists the content + creates an assistant message when content present" do
     pe, _m = @chat.add_user_message("hi", "k", "gpt-5", nil, llm_platform: "openai")
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_31_153221) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_04_084953) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -31,6 +31,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_31_153221) do
     t.bigint "chat_id"
     t.timestamptz "created_at"
     t.bigint "prompt_navigator_prompt_execution_id"
+    t.text "reasoning"
     t.text "role"
     t.timestamptz "updated_at"
     t.index ["chat_id"], name: "idx_2679984_index_messages_on_chat_id"

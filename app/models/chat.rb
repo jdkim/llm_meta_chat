@@ -147,7 +147,13 @@ class Chat < ApplicationRecord
   # guard so a mid-flight ClientDisconnected during post-stream work (e.g.
   # title generation) doesn't cause the ChatStreamsController's rescue path to
   # persist a second row for a stream that already completed.
-  def finalize_streamed_response(prompt_execution, content, jwt_token)
+  # `reasoning` is the model's streamed thinking, when it produced any. It
+  # lives on the message rather than the prompt execution: the execution is
+  # prompt_navigator's record of the prompt→response pair, while this is a
+  # presentation detail of one assistant turn. Persisting it at all is what
+  # makes the reasoning survive a page reload — it used to exist only in the
+  # DOM of the tab that streamed it.
+  def finalize_streamed_response(prompt_execution, content, jwt_token, reasoning: nil)
     return nil if content.blank?
 
     existing = messages.find_by(role: "assistant", prompt_navigator_prompt_execution_id: prompt_execution.id)
@@ -159,7 +165,8 @@ class Chat < ApplicationRecord
     )
     messages.create!(
       role: "assistant",
-      prompt_navigator_prompt_execution: prompt_execution
+      prompt_navigator_prompt_execution: prompt_execution,
+      reasoning: reasoning.presence
     )
   end
 

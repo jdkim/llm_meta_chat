@@ -13,12 +13,17 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
 
   setup do
     @original_labels = PromptNavigator.config.model_labels.dup
+    @original_cache  = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
     stub_request(:get, "#{Rails.configuration.llm_service_base_url}/api/llms")
       .to_return(status: 200, body: { llms: [] }.to_json,
                  headers: { "Content-Type" => "application/json" })
   end
 
-  teardown { PromptNavigator.config.model_labels.replace(@original_labels) }
+  teardown do
+    PromptNavigator.config.model_labels.replace(@original_labels)
+    Rails.cache = @original_cache
+  end
 
   # Create the chat through the app so it carries this browser session's
   # anon_chat_token — otherwise visible_chats_scope hides it and the page
@@ -74,5 +79,38 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
     end
 
     assert_includes response.body, "Qwen3.8 27B"
+  end
+
+  # The reported bug, exactly: POST /chats renders the History sidebar but
+  # never fetches the catalog, so a worker that had not yet served a chat page
+  # labelled the chip "Ollama" while the message bubble showed the model. The
+  # empty config below stands in for that fresh worker; only the cache-backed
+  # before_action can rescue it.
+  test "the History chip is labelled even when the action never fetches the catalog" do
+    ModelLabelRegistry.register(FAMILIES)          # some earlier request warmed the cache
+    PromptNavigator.config.model_labels.replace({}) # ...but this worker knows nothing
+
+    post chats_path, params: { message: "hello", api_key_uuid: "ollama-local",
+                               model: "qwen3-6-35b", family: "ollama" },
+                     headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    # Scoped to the chip itself: this turbo_stream also renders a streaming
+    # message bubble, so a body-wide match could pass on the bubble alone and
+    # prove nothing about the History pane that was actually reported.
+    chip = response.body[/<span class="history-card-platform-label"[^>]*>([^<]*)</, 1]
+
+    assert_equal "Qwen3.6 35B", chip
+  end
+
+  test "the chip falls back to the platform when the cache holds no label for it" do
+    PromptNavigator.config.model_labels.replace({})
+
+    post chats_path, params: { message: "hello", api_key_uuid: "ollama-local",
+                               model: "qwen3-6-35b", family: "ollama" },
+                     headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    chip = response.body[/<span class="history-card-platform-label"[^>]*>([^<]*)</, 1]
+
+    assert_equal "Ollama", chip
   end
 end

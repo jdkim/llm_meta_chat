@@ -1,4 +1,7 @@
 class ApplicationController < ActionController::Base
+  # PromptNavigator's labels are process-global, so every request must know
+  # them — not just the ones that fetch the catalog. See ModelLabelRegistry.
+  before_action :warm_model_labels
   include LlmMetaClient::Helpers
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
@@ -37,6 +40,10 @@ class ApplicationController < ActionController::Base
   # Fetches the model catalog and registers its display names, so a turn is
   # labelled by its model ("Qwen3.6 35B") rather than by its platform
   # ("Ollama"). See ModelLabelRegistry.
+  def warm_model_labels
+    ModelLabelRegistry.warm!
+  end
+
   def fetch_llm_families(jwt_token)
     families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
     ModelLabelRegistry.register(families)

@@ -153,6 +153,33 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "event: error"
   end
 
+  # The `saved` event renders chats/_message — a second render path, and the
+  # label bug surfaced precisely because two paths disagreed. This controller
+  # never fetches the catalog, so the labels can only come from the cached
+  # registry warmed on every request.
+  test "the saved message is labelled with the model, not the platform" do
+    original_cache = Rails.cache
+    original_labels = PromptNavigator.config.model_labels.dup
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    ModelLabelRegistry.register([ { llm_type: "ollama", api_keys: [ { uuid: "ollama-local",
+      available_models: [ { "value" => "qwen3-6-35b", "label" => "Qwen3.6 35B" } ] } ] } ])
+    PromptNavigator.config.model_labels.replace({}) # a worker that knows nothing yet
+
+    setup_pending_assistant_turn
+    @pe.update!(llm_platform: "ollama", model: "qwen3-6-35b")
+    stub_stream_assistant_response!(events: [ { event: "message", data: { "delta" => "hi" } } ],
+                                    assembled: "hi")
+
+    get chat_stream_path(@chat.uuid), params: { execution_id: @pe.execution_id },
+        headers: { "User-Agent" => modern_browser_ua }
+
+    assert_includes response.body, "Qwen3.6 35B"
+    assert_not_includes response.body, "🤖 Ollama"
+  ensure
+    PromptNavigator.config.model_labels.replace(original_labels)
+    Rails.cache = original_cache
+  end
+
   private
 
   # ApplicationController has `allow_browser versions: :modern`, which

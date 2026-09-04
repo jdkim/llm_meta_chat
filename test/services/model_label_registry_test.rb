@@ -16,10 +16,15 @@ class ModelLabelRegistryTest < ActiveSupport::TestCase
 
   setup do
     @original = PromptNavigator.config.model_labels.dup
+    # The test environment uses :null_store, where every read returns nil, so
+    # the caching path would be invisible. Swap in a real store for these.
+    @original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
   end
 
   teardown do
     PromptNavigator.config.model_labels.replace(@original)
+    Rails.cache = @original_cache
   end
 
   test "extracts meta_id => catalog label across every family" do
@@ -77,5 +82,44 @@ class ModelLabelRegistryTest < ActiveSupport::TestCase
 
     assert_equal "Qwen3.6 35B (retired)",
                  PromptNavigator.label_for(platform: "ollama", model: "qwen3-6-35b")
+  end
+
+  # The reported bug: ChatsController#create renders the History sidebar
+  # without fetching the catalog, so a worker that had not yet served a chat
+  # page labelled the chip "Ollama" while the message bubble — rendered by a
+  # different request — showed the model. Caching closes that gap.
+  test "register caches the labels so another request can warm from them" do
+    ModelLabelRegistry.register(FAMILIES)
+    PromptNavigator.config.model_labels.replace({})   # a fresh worker
+
+    ModelLabelRegistry.warm!
+
+    assert_equal "Qwen3.6 35B",
+                 PromptNavigator.label_for(platform: "ollama", model: "qwen3-6-35b")
+  end
+
+  test "warm! makes no HTTP call — it must be safe on every request" do
+    ModelLabelRegistry.register(FAMILIES)
+    PromptNavigator.config.model_labels.replace({})
+
+    # WebMock raises on any unstubbed connection, so this passing IS the check.
+    assert_nothing_raised { ModelLabelRegistry.warm! }
+  end
+
+  test "warm! is a no-op on a cold cache rather than an error" do
+    Rails.cache.delete(ModelLabelRegistry::CACHE_KEY)
+
+    assert_equal({}, ModelLabelRegistry.warm!)
+  end
+
+  test "register merges into the cache rather than replacing it" do
+    ModelLabelRegistry.register(FAMILIES)
+    ModelLabelRegistry.register([ { llm_type: "google", api_keys: [ { available_models: [
+      { "value" => "gemini-3-1-pro", "label" => "Gemini 3.1 Pro" }
+    ] } ] } ])
+
+    cached = ModelLabelRegistry.cached
+    assert_equal "Qwen3.6 35B", cached["qwen3-6-35b"], "earlier labels must survive"
+    assert_equal "Gemini 3.1 Pro", cached["gemini-3-1-pro"]
   end
 end

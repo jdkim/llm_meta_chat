@@ -122,4 +122,27 @@ class ModelLabelRegistryTest < ActiveSupport::TestCase
     assert_equal "Qwen3.6 35B", cached["qwen3-6-35b"], "earlier labels must survive"
     assert_equal "Gemini 3.1 Pro", cached["gemini-3-1-pro"]
   end
+
+  # Production had solid_cache configured without its tables, so the first
+  # cache write raised and every page fell into ChatsController#new's rescue:
+  # "Chat service is currently unavailable". A cosmetic label must never do
+  # that again, whatever the cache is doing.
+  test "register survives a cache that raises, and still labels the model" do
+    broken = Object.new
+    def broken.read(*) = raise(ArgumentError, "No unique index found for key_hash")
+    def broken.write(*, **) = raise(ArgumentError, "No unique index found for key_hash")
+    Rails.cache = broken
+
+    assert_nothing_raised { ModelLabelRegistry.register(FAMILIES) }
+    assert_equal "Qwen3.6 35B",
+                 PromptNavigator.label_for(platform: "ollama", model: "qwen3-6-35b")
+  end
+
+  test "warm! survives a cache that raises" do
+    broken = Object.new
+    def broken.read(*) = raise(ArgumentError, "No unique index found for key_hash")
+    Rails.cache = broken
+
+    assert_equal({}, ModelLabelRegistry.warm!)
+  end
 end

@@ -53,7 +53,13 @@ Rails.application.configure do
   # Solid Cache's database mapping is driven by config/cache.yml — the
   # production block there omits `database:` so it falls back to the
   # primary ActiveRecord connection.
-  config.cache_store = :solid_cache_store
+  # solid_cache was configured here but its tables were never installed, so
+  # every Rails.cache write raised "No unique index found for key_hash". That
+  # went unnoticed until something actually used the cache. memory_store is
+  # per-worker rather than shared, which is fine for what is cached here
+  # (model display labels); switch back to solid_cache once its schema is
+  # installed and a cache database is configured.
+  config.cache_store = :memory_store
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue

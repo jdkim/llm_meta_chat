@@ -28,9 +28,21 @@ class ModelLabelRegistry
     return labels if labels.empty?
 
     merged = cached.merge(labels)
-    Rails.cache.write(CACHE_KEY, merged, expires_in: CACHE_TTL)
+    write_cache(merged)
     PromptNavigator.config.model_labels.merge!(merged)
     labels
+  end
+
+  # Labels are cosmetic; a cache that cannot be written must never take a page
+  # down with it. It did once: production had `solid_cache_store` configured
+  # without its tables installed, so the first write raised
+  # "No unique index found for key_hash" and every page fell into
+  # ChatsController#new's rescue — "Chat service is currently unavailable".
+  def self.write_cache(labels)
+    Rails.cache.write(CACHE_KEY, labels, expires_in: CACHE_TTL)
+  rescue StandardError => e
+    Rails.logger.warn "[ModelLabelRegistry] cache write failed: #{e.class}: #{e.message}"
+    nil
   end
 
   # Makes sure this process knows the labels, whatever the current request is

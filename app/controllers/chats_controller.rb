@@ -29,7 +29,7 @@ class ChatsController < ApplicationController
 
     # Get LLM options available for users
     jwt_token = current_user.jwt_token if user_signed_in?
-    @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    @llm_families = fetch_llm_families(jwt_token)
     @locked_families = LockedModelFamilies.for(unlocked_types: @llm_families.map { |f| f[:llm_type] })
 
     # Set active UUID for history sidebar highlighting
@@ -52,7 +52,7 @@ class ChatsController < ApplicationController
     initialize_history []
 
     jwt_token = current_user.jwt_token if user_signed_in?
-    @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    @llm_families = fetch_llm_families(jwt_token)
     @locked_families = LockedModelFamilies.for(unlocked_types: @llm_families.map { |f| f[:llm_type] })
   rescue StandardError => e
     Rails.logger.error "Error in ChatsController#new: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
@@ -221,7 +221,7 @@ class ChatsController < ApplicationController
       @tool_ids = Array(params[:tool_ids]).reject(&:blank?)
     end
 
-    @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token) rescue []
+    @llm_families = fetch_llm_families(jwt_token) rescue []
 
     respond_to do |format|
       format.turbo_stream { render :create }

@@ -31,4 +31,15 @@ class ApplicationController < ActionController::Base
   def anonymous_session_token
     session[:anon_chat_token] ||= SecureRandom.hex(16)
   end
+
+  private
+
+  # Fetches the model catalog and registers its display names, so a turn is
+  # labelled by its model ("Qwen3.6 35B") rather than by its platform
+  # ("Ollama"). See ModelLabelRegistry.
+  def fetch_llm_families(jwt_token)
+    families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    ModelLabelRegistry.register(families)
+    families
+  end
 end

@@ -30,6 +30,7 @@ class ChatsController < ApplicationController
     # Get LLM options available for users
     jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    @locked_families = LockedModelFamilies.for(unlocked_types: @llm_families.map { |f| f[:llm_type] })
 
     # Set active UUID for history sidebar highlighting
     @prompt_execution = @chat.ordered_prompt_executions.last
@@ -52,9 +53,11 @@ class ChatsController < ApplicationController
 
     jwt_token = current_user.jwt_token if user_signed_in?
     @llm_families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    @locked_families = LockedModelFamilies.for(unlocked_types: @llm_families.map { |f| f[:llm_type] })
   rescue StandardError => e
     Rails.logger.error "Error in ChatsController#new: #{e.class} - #{e.message}\n#{e.backtrace&.join("\n")}"
     @llm_families = []
+    @locked_families = []
     flash.now[:alert] = "Chat service is currently unavailable. Please try again later."
   end
 

@@ -1,5 +1,6 @@
 <%
   llm_families = local_assigns[:llm_families] || []
+  locked_families = local_assigns[:locked_families] || []
   stimulus_controller = local_assigns[:stimulus_controller] || "model-picker"
 
   # Build one column per (family × api_key) tuple. "Free" (Ollama) is
@@ -21,48 +22,134 @@
         title:        title,
         family:       fam[:llm_type],
         api_key_uuid: key[:uuid],
-        models:       Array(key[:available_models])
+        models:       Array(key[:available_models]),
+        locked:       false
       }
     end
+  end
+
+  # One grid holding both what the visitor can use and what they cannot, so
+  # the picker reads as a single set of providers rather than two sections.
+  locked_columns = locked_families.map do |fam|
+    { title: fam[:title], family: fam[:llm_type], models: Array(fam[:models]), locked: true }
+  end
+
+  free_column  = columns.find { |c| c[:family] == "ollama" }
+  other_columns = columns.reject { |c| c[:family] == "ollama" } + locked_columns
+
+  # Free sits in the bottom-left cell — the corner nearest the "Other models"
+  # button that opens this panel, so the always-available option is closest to
+  # the pointer. In a two-column grid that is the first cell of the last row.
+  cells = other_columns
+  if free_column
+    total = other_columns.size + 1
+    cells = other_columns.dup.insert(total.even? ? total - 2 : total - 1, free_column)
   end
 %>
 
 <div class="model-grid">
-  <% if columns.any? %>
-    <div class="model-grid-columns" style="--cols: <%= columns.size %>;">
-      <% columns.each do |col| %>
-        <div class="model-grid-column">
-          <div class="model-grid-header"><%= col[:title] %></div>
+  <% if locked_columns.any? %>
+    <%# One call to action for the panel. The greyed cards are interleaved
+        with the usable ones, so the message names them rather than pointing
+        at a separate section. %>
+    <p class="model-grid-locked-banner">
+      <i class="bi bi-key-fill" aria-hidden="true"></i>
+      <%# API keys are held by the hub, not this app, so the action is always
+          "go to the hub" — signing in here would not unlock anything. A plain
+          link also avoids nesting a <form> inside the chat form, which
+          browsers ignore (the click submitted the chat form instead). %>
+      <% if user_signed_in? %>
+        <span>
+          Register your API key at
+          <%= link_to "hub.AIbranch",
+                      "#{Rails.configuration.llm_service_public_url}/sso?return_to=/models",
+                      target: "_blank", rel: "noopener", class: "model-grid-locked-link" %>
+          to unlock the greyed-out models.
+        </span>
+      <% else %>
+        <span>
+          Sign in at
+          <%= link_to "hub.AIbranch", Rails.configuration.llm_service_public_url,
+                      target: "_blank", rel: "noopener", class: "model-grid-locked-link" %>
+          and register your API key to unlock the greyed-out models.
+        </span>
+      <% end %>
+    </p>
+  <% elsif user_signed_in? %>
+    <%# Nothing left to unlock, so the banner carries what is still worth
+        knowing — the personalisation that also lives on the hub. Kept calm
+        rather than amber: there is nothing here to fix. %>
+    <p class="model-grid-locked-banner is-info">
+      <i class="bi bi-star" aria-hidden="true"></i>
+      <span>
+        Set your favorite models and a personal default at
+        <%= link_to "hub.AIbranch",
+                    "#{Rails.configuration.llm_service_public_url}/sso?return_to=/models",
+                    target: "_blank", rel: "noopener", class: "model-grid-locked-link" %>.
+      </span>
+    </p>
+  <% end %>
+
+  <% if cells.any? %>
+    <div class="model-grid-columns">
+      <% cells.each do |col| %>
+        <div class="model-grid-column<%= " is-locked" if col[:locked] %>">
+          <div class="model-grid-header">
+            <%= col[:title] %>
+            <% if col[:locked] %>
+              <i class="bi bi-lock-fill model-grid-lock" aria-hidden="true"></i>
+            <% end %>
+          </div>
           <ul class="model-grid-list">
             <% col[:models].each do |m| %>
               <li>
-                <button type="button"
-                        class="model-grid-cell"
-                        title="<%= m['value'] %>"
-                        data-family="<%= col[:family] %>"
-                        data-api-key-uuid="<%= col[:api_key_uuid] %>"
-                        data-model="<%= m['value'] %>"
-                        data-supports-vision="<%= m['supports_vision'] %>"
-                        data-action="click-><%= stimulus_controller %>#pick">
-                  <span class="model-grid-label"><%= m['label'] %></span>
-                  <span class="model-grid-badges">
-                    <% if m['kind'].to_s == "image" %>
-                      <i class="bi bi-image model-badge model-badge-image" title="Image generation"></i>
-                    <% end %>
-                    <% if m['supports_vision'] %>
-                      <i class="bi bi-eye model-badge model-badge-vision" title="Vision input"></i>
-                    <% end %>
-                    <% if m['supports_tools'] %>
-                      <i class="bi bi-tools model-badge model-badge-tools" title="Tool / function calling"></i>
-                    <% end %>
-                    <% if m['pricing_tier'].present? %>
-                      <span class="model-badge model-badge-price" title="<%= m['pricing_label'] %>"><%= m['pricing_tier'] %></span>
-                    <% end %>
-                    <% if m['default'] %>
-                      <i class="bi bi-bookmark-star-fill model-badge model-badge-default" title="Your default model"></i>
-                    <% end %>
+                <% if col[:locked] %>
+                  <%# Legible but inert: the model names are the reason to sign
+                      in, a hover tooltip never fires on touch, and blurred text
+                      still reaches a screen reader. %>
+                  <span class="model-grid-cell is-disabled" aria-disabled="true">
+                    <span class="model-grid-label"><%= m["display_name"] %></span>
+                    <span class="model-grid-badges">
+                      <% if m["kind"].to_s == "image" %>
+                        <i class="bi bi-image model-badge model-badge-image" title="Image generation"></i>
+                      <% end %>
+                      <% if m["supports_vision"] %>
+                        <i class="bi bi-eye model-badge model-badge-vision" title="Vision input"></i>
+                      <% end %>
+                      <% if m["supports_tools"] %>
+                        <i class="bi bi-tools model-badge model-badge-tools" title="Tool / function calling"></i>
+                      <% end %>
+                    </span>
                   </span>
-                </button>
+                <% else %>
+                  <button type="button"
+                          class="model-grid-cell"
+                          title="<%= m['value'] %>"
+                          data-family="<%= col[:family] %>"
+                          data-api-key-uuid="<%= col[:api_key_uuid] %>"
+                          data-model="<%= m['value'] %>"
+                          data-supports-vision="<%= m['supports_vision'] %>"
+                          data-action="click-><%= stimulus_controller %>#pick">
+                    <span class="model-grid-label"><%= m['label'] %></span>
+                    <span class="model-grid-badges">
+                      <% if m['kind'].to_s == "image" %>
+                        <i class="bi bi-image model-badge model-badge-image" title="Image generation"></i>
+                      <% end %>
+                      <% if m['supports_vision'] %>
+                        <i class="bi bi-eye model-badge model-badge-vision" title="Vision input"></i>
+                      <% end %>
+                      <% if m['supports_tools'] %>
+                        <i class="bi bi-tools model-badge model-badge-tools" title="Tool / function calling"></i>
+                      <% end %>
+                      <% if m['pricing_tier'].present? %>
+                        <span class="model-badge model-badge-price" title="<%= m['pricing_label'] %>"><%= m['pricing_tier'] %></span>
+                      <% end %>
+                      <% if m['default'] %>
+                        <i class="bi bi-bookmark-star-fill model-badge model-badge-default" title="Your default model"></i>
+                      <% end %>
+                    </span>
+                  </button>
+                <% end %>
               </li>
             <% end %>
           </ul>
@@ -73,16 +160,4 @@
     <p class="model-grid-empty">No models available.</p>
   <% end %>
 
-  <p class="model-grid-footer">
-    <i class="bi bi-info-circle"></i>
-    <% if user_signed_in? %>
-      Access
-      <%= link_to "hub.AIbranch",
-                  "#{Rails.configuration.llm_service_public_url}/sso?return_to=/models",
-                  target: "_blank", rel: "noopener" %>
-      to unlock more models by registering your API keys.
-    <% else %>
-      Sign in to add API keys, favorites, and set a personal default model.
-    <% end %>
-  </p>
 </div>

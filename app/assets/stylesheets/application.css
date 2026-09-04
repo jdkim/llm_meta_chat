@@ -69,12 +69,18 @@ body {
   }
 }
 
+/* The sidebars are white against a #f9fafb page, so their edge was carrying
+   the whole separation — one hairline the same value as every other border on
+   the page. A firmer rule plus a short inward shadow makes the centre column
+   read as the recessed surface it is. */
 .sidebar-left {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #d7dde5;
+  box-shadow: 1px 0 3px rgba(15, 23, 42, 0.04);
 }
 
 .sidebar-right {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid #d7dde5;
+  box-shadow: -1px 0 3px rgba(15, 23, 42, 0.04);
   width: 310px;
 }
 

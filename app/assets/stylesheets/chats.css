@@ -344,7 +344,13 @@
   left: 0;
   right: 0;
   margin-bottom: 4px;
-  border: 1px solid #e5e7eb;
+  /* These float above the page, and the page body is #f9fafb too — the same
+     colour the panels used, with only a 1px hairline between them. Nothing
+     read as an edge. Elevation (shadow) is what says "above", so that carries
+     the separation; the surface stays light so the white provider cards
+     inside it still stand out. */
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.07);
   border-radius: 8px;
   background-color: #f9fafb;
   padding: 12px 16px;
@@ -399,7 +405,13 @@
   left: 0;
   right: 0;
   margin-bottom: 4px;
-  border: 1px solid #e5e7eb;
+  /* These float above the page, and the page body is #f9fafb too — the same
+     colour the panels used, with only a 1px hairline between them. Nothing
+     read as an edge. Elevation (shadow) is what says "above", so that carries
+     the separation; the surface stays light so the white provider cards
+     inside it still stand out. */
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.07);
   border-radius: 8px;
   background-color: #f9fafb;
   max-height: 300px;
@@ -596,7 +608,13 @@
   left: 0;
   right: 0;
   margin-bottom: 4px;
-  border: 1px solid #e5e7eb;
+  /* These float above the page, and the page body is #f9fafb too — the same
+     colour the panels used, with only a 1px hairline between them. Nothing
+     read as an edge. Elevation (shadow) is what says "above", so that carries
+     the separation; the surface stays light so the white provider cards
+     inside it still stand out. */
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.07);
   border-radius: 8px;
   background-color: #f9fafb;
   padding: 12px 16px;
@@ -906,8 +924,13 @@
 
 .model-grid-columns {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  /* Two provider cards per row (2x2 for the usual four providers). One
+     column per provider fitted four across, which left each card too narrow
+     to read a model name in — the names ellipsised and every column looked
+     alike. Half as many columns, twice the width. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 
 .model-grid-column {
@@ -915,9 +938,12 @@
   flex-direction: column;
   min-width: 0;
   background-color: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbe1e8;
   border-radius: 8px;
   overflow: hidden;
+  /* Page (#f9fafb) < panel (#f9fafb + shadow) < card (white). Without the
+     faint lift the card edge was the same hairline as everything else. */
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .model-grid-header {
@@ -1018,6 +1044,96 @@
 .model-grid-cell.is-selected .model-badge-favorite,
 .model-grid-cell.is-selected .model-badge-default { color: #fde68a; }
 
+/* Providers the visitor has no API key for: readable, obviously inert.
+   Dimmed rather than blurred so the model names — the reason to sign in —
+   stay legible, and so the state does not depend on a hover tooltip. */
+.model-grid-column.is-locked {
+  background-color: #fafafa;
+  border-style: dashed;
+}
+
+.model-grid-column.is-locked .model-grid-header {
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.model-grid-lock { font-size: 11px; color: #9ca3af; }
+
+/* One call to action for the whole locked section, rather than the same
+   sentence repeated on every card. Sits between the visitor's own providers
+   and the ones they cannot use yet, so it reads as the boundary between
+   them. */
+.model-grid-locked-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #92400e;
+  background-color: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.model-grid-locked-banner i { font-size: 14px; flex: 0 0 auto; }
+
+/* Informational variant, shown once every provider is unlocked. Amber says
+   "something needs doing"; this only offers personalisation, so it is calm. */
+.model-grid-locked-banner.is-info {
+  color: #334155;
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  font-weight: 500;
+}
+
+.model-grid-locked-banner.is-info .model-grid-locked-link,
+.model-grid-locked-banner.is-info .model-grid-locked-link:visited { color: #1d4ed8; }
+.model-grid-locked-banner.is-info .model-grid-locked-link:hover { color: #1e40af; }
+
+/* The banner's call to action. For a signed-in visitor a link to the hub;
+   for a signed-out one a real sign-in submit (omniauth needs a POST), styled
+   to read as part of the sentence rather than as a separate button. */
+.model-grid-locked-link,
+.model-grid-locked-link:visited {
+  color: #92400e;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.model-grid-locked-link:hover { color: #78350f; }
+
+.model-grid-locked-form { display: inline; }
+
+button.model-grid-locked-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.model-grid-cell.is-disabled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: #9ca3af;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.model-grid-cell.is-disabled:hover { background: transparent; }
+.model-grid-cell.is-disabled .model-badge { color: #d1d5db; }
+
 .model-grid-empty {
   padding: 8px;
   font-size: 12px;
@@ -1035,11 +1151,9 @@
   a:hover { text-decoration: underline; }
 }
 
-/* On narrow viewports the 4-column grid stacks two-up. */
-@media (max-width: 720px) {
-  .model-grid-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 420px) {
+/* Two-up is the default; drop to a single column once two cards no longer
+   fit side by side. */
+@media (max-width: 560px) {
   .model-grid-columns { grid-template-columns: 1fr; }
 }
 
@@ -1300,8 +1414,12 @@
   margin: 40px auto;
   padding: 32px 28px;
   background: linear-gradient(135deg, #f0fdfa 0%, #eff6ff 100%);
-  border: 1px solid #d1fae5;
+  /* Same depth order as the composer popovers: the page is #f9fafb, so a pale
+     mint hairline gave this no edge. Border firm enough to read, shadow to
+     place it above the page rather than painted onto it. */
+  border: 1px solid #bfdbfe;
   border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.05);
   text-align: center;
 }
 .landing-hero h1 {
@@ -1348,8 +1466,10 @@
 }
 .landing-hero-example {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  /* One level above the hero, matching the provider cards inside the picker. */
+  border: 1px solid #dbe1e8;
   border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
   padding: 12px;
   display: flex;
   flex-direction: column;

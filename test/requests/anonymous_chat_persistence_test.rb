@@ -10,6 +10,13 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
     @noop_query = Object.new
     @noop_query.define_singleton_method(:stream) { |*, **, &_| "" }
     @noop_query.define_singleton_method(:call)   { |*, **| "" }
+
+    # ChatsController also asks the catalog which providers the visitor has
+    # no key for, to show them as locked. Empty here — these tests are about
+    # anonymous chat persistence, not the picker.
+    stub_request(:get, "#{Rails.configuration.llm_service_base_url}/api/llms")
+      .to_return(status: 200, body: { llms: [] }.to_json,
+                 headers: { "Content-Type" => "application/json" })
   end
 
   test "an anonymous visitor's POST /chats stamps the new chat with the browser session_id" do

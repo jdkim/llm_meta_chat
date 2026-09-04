@@ -94,6 +94,11 @@ class ChatStreamsController < ApplicationController
     forward(event: "error", data: { code: "not_found", message: "Chat or prompt execution not found" }) rescue nil
   rescue StandardError => e
     Rails.logger.error "[ChatStream] #{e.class}: #{e.message}"
+    # Keep whatever already streamed, exactly as the cancel path does. A turn
+    # that fails late — the server's turn budget stopping a slow local model is
+    # the common case — has usually produced a real answer and a lot of
+    # reasoning by then, and discarding it loses work the user already watched.
+    persist_partial(chat, prompt_execution, partial, jwt_token, reasoning: reasoning)
     forward(event: "error", data: { code: e.class.name, message: e.message }) rescue nil
   ensure
     response.stream.close

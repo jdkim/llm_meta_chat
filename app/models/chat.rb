@@ -2,7 +2,11 @@ class Chat < ApplicationRecord
   include ChatManager::TitleGeneratable
 
   belongs_to :user, optional: true
-  has_many :messages, dependent: :destroy
+  # Ordered at the association: a chat transcript is only meaningful in
+  # sequence, and an unordered `chat.messages` once rendered a reply above
+  # the prompt that produced it — Postgres is free to return rows in any
+  # order when no ORDER BY is given, and `includes(:messages)` gives none.
+  has_many :messages, -> { order(:created_at, :id) }, dependent: :destroy
 
   before_create :set_uuid
 

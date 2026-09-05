@@ -6,7 +6,7 @@
       <%= render "chats/landing_hero", featured_chat: @featured_public_chat %>
     <% end %>
     <div id="messages-list">
-      <%= render partial: "chats/messages_list", locals: { messages: @chat&.messages } %>
+      <%= render partial: "chats/messages_list", locals: { messages: @messages } %>
     </div>
   </div>
 

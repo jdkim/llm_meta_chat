@@ -268,6 +268,7 @@ export default class extends Controller {
       api_key_required:   { label: "⚠️ API key required",     prefix: "API key required" },
       argument_error:     { label: "⚠️ Bad request",          prefix: "Bad request" },
       model_not_found:    { label: "⚠️ Model not found",      prefix: "Model not found" },
+      context_overflow:   { label: "⚠️ Context full",         prefix: "Context full" },
     }[code] || { label: "⚠️ error", prefix: "error" }
 
     // Swap the transient phase label ("⚙️ Working…" / "🤖 streaming…") for

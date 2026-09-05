@@ -24,14 +24,21 @@ Rails.application.configure do
 
   # System-wide default meta_id pre-selected in the chat composer.
   # Override via LLM_DEFAULT_MODEL or credentials[:llm_service][:default_model].
+  # Keep this pointing at a model that is actually in the catalog. It named
+  # qwen3-6-35b-fast until that model was retired (2026-09-05), after which
+  # the composer silently had no pre-selected model at all — nothing warns
+  # when the default names something the catalog no longer serves.
   config.default_model = ENV["LLM_DEFAULT_MODEL"] ||
                          Rails.application.credentials.dig(:llm_service, :default_model) ||
-                         "qwen3-6-35b-fast"
+                         "qwen3-8-27b-fast"
 
   # Cheap meta_id used by Chat#summarization_target to condense overflow
   # context. Falls back to the user's selected model if this meta_id isn't
   # in the catalog at request time.
+  # Same model as the default: it is the non-thinking variant of the one
+  # already resident on the local server, so summarising costs no extra load
+  # and no model swap.
   config.summarization_model = ENV["LLM_SUMMARIZATION_MODEL"] ||
                                Rails.application.credentials.dig(:llm_service, :summarization_model) ||
-                               "qwen3-6-35b-fast"
+                               "qwen3-8-27b-fast"
 end

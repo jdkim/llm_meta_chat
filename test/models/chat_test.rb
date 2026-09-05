@@ -373,10 +373,10 @@ class ChatTest < ActiveSupport::TestCase
     options = [
       { uuid: "openai-key", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-6-35b-fast" }, { "value" => "qwen3-6-35b" }
+        { "value" => Rails.configuration.summarization_model }, { "value" => "some-other-model" }
       ] }
     ]
-    assert_equal [ "ollama-local", "qwen3-6-35b-fast" ],
+    assert_equal [ "ollama-local", Rails.configuration.summarization_model ],
                  @chat.send(:summarization_target, options)
   end
 
@@ -387,16 +387,16 @@ class ChatTest < ActiveSupport::TestCase
 
   test "summarization_target returns nil when ollama is present but SUMMARIZATION_MODEL is not in its catalog" do
     options = [ { uuid: "ollama-local", llm_type: "ollama", available_models: [
-      { "value" => "qwen3-6-35b" }
+      { "value" => "some-other-model" }
     ] } ]
     assert_nil @chat.send(:summarization_target, options)
   end
 
   test "summarization_target accepts symbol-keyed model entries too" do
     options = [ { uuid: "ollama-local", llm_type: "ollama", available_models: [
-      { value: "qwen3-6-35b-fast" }
+      { value: Rails.configuration.summarization_model }
     ] } ]
-    assert_equal [ "ollama-local", "qwen3-6-35b-fast" ],
+    assert_equal [ "ollama-local", Rails.configuration.summarization_model ],
                  @chat.send(:summarization_target, options)
   end
 
@@ -861,7 +861,7 @@ class ChatTest < ActiveSupport::TestCase
     options = [
       { uuid: "key-1", llm_type: "openai", available_models: [ { "value" => "gpt-5" } ] },
       { uuid: "ollama-local", llm_type: "ollama", available_models: [
-        { "value" => "qwen3-6-35b-fast" }, { "value" => "qwen3-6-35b" }
+        { "value" => Rails.configuration.summarization_model }, { "value" => "some-other-model" }
       ] }
     ]
 
@@ -874,7 +874,7 @@ class ChatTest < ActiveSupport::TestCase
     end
 
     assert_equal "ollama-local", summarizer_uuid
-    assert_equal "qwen3-6-35b-fast", summarizer_model
+    assert_equal Rails.configuration.summarization_model, summarizer_model
   end
 
   test "build_streaming_messages falls back to the user's own model when ollama qwen isn't available" do

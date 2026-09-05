@@ -130,6 +130,26 @@
   overflow-y: auto;
 }
 
+/* The role label's spinner while a turn is in flight. The wait is often long
+ * on local models — a tool round has to re-process the whole prompt plus the
+ * tool results before the first token — so a still label reads as a hang.
+ * Rotation makes it visibly alive without adding another block to the page. */
+.message-role .role-spinner {
+  display: inline-block;
+  animation: role-working-spin 1.8s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@keyframes role-working-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Respect a reader's motion preference: keep the label, drop the spin. */
+@media (prefers-reduced-motion: reduce) {
+  .message-role .role-spinner { animation: none; }
+}
+
 /* Staggered three-dot "typing" indicator after the Reasoning summary
  * while thinking is still streaming. The .thinking-active class is set
  * by message_stream_controller when the thinking block is created and

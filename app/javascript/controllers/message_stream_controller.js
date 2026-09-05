@@ -31,14 +31,15 @@ export default class extends Controller {
     if (!delta) return
     // First content delta after a "thinking" phase: flip the role label so
     // the user knows generation has actually started.
-    this.#exitThinkingPhase()
+    this.#exitWorkingPhase()
     this.contentTarget.append(delta)
     this.#scrollToBottom()
   }
 
-  #exitThinkingPhase() {
+  #exitWorkingPhase() {
     const role = this.element.querySelector(".message-role")
-    if (role && role.textContent.includes("Thinking")) {
+    if (role && role.classList.contains("is-working")) {
+      role.classList.remove("is-working")
       role.textContent = "🤖 streaming…"
     }
   }
@@ -169,16 +170,23 @@ export default class extends Controller {
   // Phase events from the server signal what it's currently doing during the
   // synchronous parts of a tool turn (model thinking, tool execution). The role
   // label reflects the phase so users know progress is real, not a hang.
+  // The "thinking" phase really means "nothing has come back yet". For a model
+  // with think:false there is no reasoning at all — the wait is prefill — so
+  // the label says Working, which is true either way. The gear is a separate
+  // element so CSS can animate it; the is-working class replaces the old
+  // habit of matching on the label text.
   #onPhase(event) {
     let name
     try { name = JSON.parse(event.data).name } catch { return }
     const role = this.element.querySelector(".message-role")
     if (!role) return
-    const labels = {
-      thinking:    "🤔 Thinking…",
-      responding:  "🤖 streaming…",
+
+    if (name === "thinking") {
+      role.innerHTML = '<span class="role-spinner" aria-hidden="true">⚙️</span> Working…'
+      role.classList.add("is-working")
+    } else if (name === "responding") {
+      this.#exitWorkingPhase()
     }
-    if (labels[name]) role.textContent = labels[name]
   }
 
   // Swap the streaming bubble's role + content with the host-rendered _message
@@ -262,12 +270,15 @@ export default class extends Controller {
       model_not_found:    { label: "⚠️ Model not found",      prefix: "Model not found" },
     }[code] || { label: "⚠️ error", prefix: "error" }
 
-    // Swap the transient phase label ("🤔 Thinking…" / "🤖 streaming…") for
+    // Swap the transient phase label ("⚙️ Working…" / "🤖 streaming…") for
     // a clear failure indicator so the bubble doesn't sit forever pretending
     // to be in flight — this used to leave users staring at a spinning
     // reasoning block when the upstream provider returned e.g. HTTP 503.
     const role = this.element.querySelector(".message-role")
-    if (role) role.textContent = codeUX.label
+    if (role) {
+      role.classList.remove("is-working")
+      role.textContent = codeUX.label
+    }
     this.element.classList.add("stream-errored")
 
     // Fold the pulsing "reasoning" section (it stops the animation and

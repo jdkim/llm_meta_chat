@@ -1606,3 +1606,38 @@ button.model-grid-locked-link {
   color: #cbd5e1;
 }
 .lh-check-on { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+
+/* Synthetic root node in the history pane.
+   Deliberately distinct from .history-card: it is not a prompt execution and
+   has no uuid, no parent and no delete affordance. Nothing ever points an
+   arrow at it, because a root branch genuinely has no parent. */
+.history-start-card {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.5rem;
+  border: 1px dashed var(--border-color, #c7c7c7);
+  border-radius: 6px;
+  color: var(--muted-text, #666);
+  font-size: 0.82rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.history-start-card:hover {
+  border-style: solid;
+  color: var(--text-color, #222);
+}
+
+.history-start-card.is-active {
+  border-style: solid;
+  border-color: var(--accent-color, #3b7dd8);
+  color: var(--accent-color, #3b7dd8);
+  font-weight: 600;
+}
+
+.history-start-plus {
+  font-weight: 700;
+  line-height: 1;
+}

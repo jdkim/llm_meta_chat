@@ -1,0 +1,51 @@
+<%
+  # The history pane, shared by the full page render and the Turbo Stream
+  # refresh so the two cannot drift. It uses prompt_navigator's card partial
+  # but not its `_history` wrapper, because the wrapper has no place to put
+  # the synthetic root node below.
+  chat        = local_assigns[:chat]
+  history     = local_assigns[:history] || []
+  active_uuid = local_assigns[:active_uuid]
+  delete_path = local_assigns[:delete_path]
+  parked_at_root = local_assigns[:parked_at_root]
+
+  # A PE is a leaf when nothing else in the chat names it as `previous`.
+  non_leaf_ids = history.filter_map(&:previous_id)
+%>
+
+<h2>History</h2>
+
+<% if chat %>
+  <%# The tree has no record for "before the first prompt", so until now there
+      was nothing to click to begin a fresh lineage — the first prompt was the
+      root by accident of being first. This parks the composer at
+      Chat::ROOT_PARENT, which resolve_parent! maps to previous_id = nil: a
+      branch with no ancestors, so build_context yields no prior turns.
+      Deliberately neutral rather than "re-run with another model" — the same
+      prompt on a different model and an entirely different prompt are both
+      valid reasons to want a clean start. %>
+  <%= link_to chat_path(chat.uuid, from: Chat::ROOT_PARENT),
+              class: "history-start-card#{' is-active' if parked_at_root}",
+              title: "Compose with no history — starts a new branch from the empty state" do %>
+    <span class="history-start-plus">+</span>
+    <span class="history-start-label">New from start</span>
+  <% end %>
+<% end %>
+
+<% if history.present? %>
+  <div class="history-stack" id="history-stack" data-controller="history">
+    <% history.each_with_index do |ann, idx| %>
+      <%= render "prompt_navigator/history_card", locals: {
+        ann: ann,
+        next_ann: history[idx + 1],
+        is_active: ann.execution_id == active_uuid,
+        card_path: ->(uuid) { prompt_path(uuid) },
+        delete_path: delete_path,
+        is_leaf: !non_leaf_ids.include?(ann.id)
+      } %>
+    <% end %>
+    <svg class="history-arrows" data-history-target="svg"></svg>
+  </div>
+<% else %>
+  <p class="history-empty">No history yet</p>
+<% end %>

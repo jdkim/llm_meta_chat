@@ -39,7 +39,24 @@ class ChatStreamsController < ApplicationController
       return
     end
 
-    jwt_token = current_user.jwt_token if user_signed_in?
+    # User#jwt_token returns nil when the stored Google id_token has expired
+    # and cannot be refreshed (no refresh_token). Calling the hub without a
+    # bearer does not fail — it silently downgrades the request to the
+    # anonymous, Ollama-only path, so a paid model comes back as
+    # "Model not found". Signed in but tokenless is its own state and has to
+    # say so. Observed in production 2026-09-12, 16 seconds after expiry.
+    if user_signed_in?
+      jwt_token = current_user.jwt_token
+      if jwt_token.blank?
+        Rails.logger.warn "[ChatStream] signed-in user #{current_user.id} has no usable id_token; refusing to fall back to the anonymous path"
+        forward(event: "error", data: {
+          code: "session_expired",
+          message: "Your sign-in with the model service has expired. Reload the page to continue."
+        })
+        forward(event: "done", data: {})
+        return
+      end
+    end
     generation_settings = parse_generation_settings(params[:generation_settings_json])
     tool_ids = Array(params[:tool_ids]).reject(&:blank?)
 

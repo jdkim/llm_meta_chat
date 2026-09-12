@@ -1,6 +1,24 @@
 require_relative "boot"
 
-require "rails/all"
+require "rails"
+
+# Pick the frameworks you want. This was `rails/all`, which loaded
+# ActiveStorage, ActionText and ActionMailbox — none of which this app uses:
+# no attachments are declared anywhere, there are no active_storage tables,
+# and images travel as base64 data URIs inside the prompt (see Chat#add_user_message).
+# The only visible effect was ActiveStorage warning on every boot that libvips
+# is missing, for a variant processor nothing ever calls.
+require "active_model/railtie"
+require "active_job/railtie"
+require "active_record/railtie"
+# require "active_storage/engine"
+require "action_controller/railtie"
+require "action_mailer/railtie"
+require "action_view/railtie"
+require "action_cable/engine"
+# require "action_mailbox/engine"
+# require "action_text/engine"
+require "rails/test_unit/railtie"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.

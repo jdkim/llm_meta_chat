@@ -986,4 +986,62 @@ class ChatTest < ActiveSupport::TestCase
     # the sidebar after reverse.
     assert_equal older.uuid, user.chats.reload.map(&:uuid).last
   end
+
+  # ----- resolve_parent! ----- #
+  #
+  # The old contract let a blank parent mean "chain to whatever is
+  # chronologically last". That is a different node from the one the user is
+  # looking at once a chat has branched, and the field carrying it is
+  # maintained by client-side JS that failed silently — so a dropped value
+  # silently reparented the prompt onto another branch and fed the wrong
+  # history to the model. resolve_parent! never guesses.
+
+  test "resolve_parent! maps the root sentinel to no parent" do
+    assert_nil @chat.resolve_parent!(Chat::ROOT_PARENT)
+  end
+
+  test "resolve_parent! resolves an execution_id belonging to this chat" do
+    pe, _m = @chat.add_user_message("first", "k", "gpt-5")
+
+    assert_equal pe.id, @chat.resolve_parent!(pe.execution_id)
+  end
+
+  test "resolve_parent! raises on a blank parent instead of chaining to the tip" do
+    @chat.add_user_message("first", "k", "gpt-5")
+
+    assert_raises(Chat::InvalidParentError) { @chat.resolve_parent!(nil) }
+    assert_raises(Chat::InvalidParentError) { @chat.resolve_parent!("") }
+  end
+
+  test "resolve_parent! raises on an unknown execution_id" do
+    assert_raises(Chat::InvalidParentError) { @chat.resolve_parent!("no-such-uuid") }
+  end
+
+  # The graft guard: PromptExecution#ancestors walks `previous` with no chat
+  # boundary, so a parent from another chat would pull that conversation's
+  # turns into this one's context.
+  test "resolve_parent! refuses a parent belonging to a different chat" do
+    other = Chat.create!(user: @chat.user)
+    foreign, _m = other.add_user_message("other chat", "k", "gpt-5")
+
+    assert_raises(Chat::InvalidParentError) { @chat.resolve_parent!(foreign.execution_id) }
+  end
+
+  test "add_user_message treats an explicit previous_id: nil as a clean start" do
+    @chat.add_user_message("first", "k", "gpt-5")
+
+    root2, _m = @chat.add_user_message("independent", "k", "gpt-5", previous_id: nil)
+
+    assert_nil root2.previous_id
+    assert_empty root2.build_context, "a clean start must carry no ancestors"
+  end
+
+  test "add_user_message honours an explicit previous_id over the tip default" do
+    pe1, _m = @chat.add_user_message("first", "k", "gpt-5")
+    @chat.add_user_message("second", "k", "gpt-5")
+
+    branch, _m = @chat.add_user_message("branch", "k", "gpt-5", previous_id: pe1.id)
+
+    assert_equal pe1.id, branch.previous_id
+  end
 end

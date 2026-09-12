@@ -30,7 +30,7 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
   # redirects instead of rendering.
   def build_ollama_turn
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
     end
     chat = Chat.where(user_id: nil).order(:id).last
 
@@ -90,7 +90,7 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
     ModelLabelRegistry.register(FAMILIES)          # some earlier request warmed the cache
     PromptNavigator.config.model_labels.replace({}) # ...but this worker knows nothing
 
-    post chats_path, params: { message: "hello", api_key_uuid: "ollama-local",
+    post chats_path, params: { parent: Chat::ROOT_PARENT, message: "hello", api_key_uuid: "ollama-local",
                                model: "qwen3-6-35b", family: "ollama" },
                      headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
@@ -105,7 +105,7 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
   test "the chip falls back to the platform when the cache holds no label for it" do
     PromptNavigator.config.model_labels.replace({})
 
-    post chats_path, params: { message: "hello", api_key_uuid: "ollama-local",
+    post chats_path, params: { parent: Chat::ROOT_PARENT, message: "hello", api_key_uuid: "ollama-local",
                                model: "qwen3-6-35b", family: "ollama" },
                      headers: { "Accept" => "text/vnd.turbo-stream.html" }
 

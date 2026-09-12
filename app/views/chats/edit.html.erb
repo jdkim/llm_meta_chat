@@ -108,7 +108,7 @@
           </div>
         </div>
       <% end %>
-      <%= f.hidden_field :branch_from_uuid, value: @branch_from_uuid || params.dig(:chat, :branch_from_uuid) %>
+      <%= hidden_field_tag :parent, parent_field_value(@chat), id: "parent_uuid" %>
     <% end %>
   </div>
   <% end %>

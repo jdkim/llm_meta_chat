@@ -8,11 +8,23 @@
   <i class="bi bi-exclamation-triangle-fill"></i>
   <div class="reauth-banner-message">
     Your Google sign-in has expired. Re-sign-in to continue using API-key
-    providers (Ollama still works without sign-in).
+    providers (Ollama still works without sign-in). Google will ask you to
+    confirm access — granting it lets us renew the sign-in automatically
+    instead of asking again every hour.
   </div>
+  <%# prompt=consent, not the initializer's select_account.
+      Google issues a refresh_token only on the FIRST consent per user x
+      client, so a plain re-sign-in returns a fresh id_token and still no
+      refresh_token: the banner clears, then the same lapse returns an hour
+      later, forever. Forcing the consent screen on this path — and only this
+      path, so ordinary sign-in stays frictionless — is what actually restores
+      offline access. :prompt is in omniauth-google-oauth2's AUTHORIZE_OPTIONS
+      and is read from request params, so this overrides the initializer for
+      this request alone. %>
   <%= form_with url: user_google_oauth2_omniauth_authorize_path,
                 method: :post, local: true,
                 data: { turbo: false, action: "submit->reauth-banner#stashAndSubmit" } do |form| %>
+    <%= hidden_field_tag :prompt, "consent" %>
     <%= button_tag type: "submit", class: "reauth-banner-button" do %>
       <i class="fa-brands fa-google"></i> Sign in again
     <% end %>

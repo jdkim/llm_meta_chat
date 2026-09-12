@@ -64,9 +64,12 @@
   </div>
   <div class="sidebar sidebar-right">
     <div id="history-sidebar">
-      <%= history_list(->(execution_id) { prompt_path(execution_id) },
-                       active_uuid: @active_message_uuid,
-                       delete_path: (@chat&.read_only_for?(current_user) ? nil : ->(execution_id) { prompt_path(execution_id) })) %>
+      <%= render "chats/history_pane",
+                 chat: @chat,
+                 history: @history || [],
+                 active_uuid: @active_message_uuid,
+                 parked_at_root: @parent_uuid == Chat::ROOT_PARENT,
+                 delete_path: (@chat&.read_only_for?(current_user) ? nil : ->(execution_id) { prompt_path(execution_id) }) %>
     </div>
   </div>
 </div>

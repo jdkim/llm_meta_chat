@@ -32,9 +32,17 @@ class ChatsController < ApplicationController
     @llm_families = fetch_llm_families(jwt_token)
     @locked_families = LockedModelFamilies.for(unlocked_types: @llm_families.map { |f| f[:llm_type] })
 
-    # Set active UUID for history sidebar highlighting
+    # `?from=root` parks the composer on the synthetic root node: the next
+    # prompt starts a branch with no ancestors. @prompt_execution still points
+    # at the tip so the model picker keeps sensible defaults, but no history
+    # card is highlighted — the Start card is what is active.
     @prompt_execution = @chat.ordered_prompt_executions.last
-    set_active_message_uuid(@prompt_execution&.execution_id)
+    if params[:from] == Chat::ROOT_PARENT
+      @parent_uuid = Chat::ROOT_PARENT
+      set_active_message_uuid(nil)
+    else
+      set_active_message_uuid(@prompt_execution&.execution_id)
+    end
 
     render "chats/edit"
   rescue StandardError => e

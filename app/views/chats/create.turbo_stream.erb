@@ -42,19 +42,12 @@
 <% if @prompt_execution %>
   <%= turbo_stream.replace "history-sidebar" do %>
     <div id="history-sidebar">
-      <h2>History</h2>
-      <% history = @chat&.ordered_prompt_executions || [] %>
-      <div class="history-stack" id="history-stack" data-controller="history">
-        <% history.each_with_index do |ann, idx| %>
-          <%= render 'prompt_navigator/history_card', locals: {
-            ann: ann,
-            next_ann: history[idx + 1],
-            is_active: ann.execution_id == @active_message_uuid,
-            card_path: ->(uuid) { prompt_path(uuid) }
-          } %>
-        <% end %>
-        <svg class="history-arrows" data-history-target="svg"></svg>
-      </div>
+      <%= render "chats/history_pane",
+                 chat: @chat,
+                 history: (@chat&.ordered_prompt_executions || []),
+                 active_uuid: @active_message_uuid,
+                 parked_at_root: false,
+                 delete_path: (@chat&.read_only_for?(current_user) ? nil : ->(execution_id) { prompt_path(execution_id) }) %>
     </div>
   <% end %>
 <% end %>

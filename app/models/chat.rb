@@ -25,8 +25,65 @@ class Chat < ApplicationRecord
   # Add a user message to the chat. `image` and `document` are mutually
   # exclusive attachments — the form surface only permits one at a time;
   # if both slip through, image takes precedence.
-  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, llm_platform: nil, image: nil, document: nil)
-    previous_id = if branch_from_execution_id.present?
+  # Sentinel parent meaning "start a new branch from the clean, empty state".
+  # There is no node to name for the first prompt of a lineage, so the root
+  # case needs an explicit value — a blank one cannot be used, because blank
+  # used to mean "chain to the latest message" and that ambiguity is the bug
+  # this replaces.
+  ROOT_PARENT = "root"
+
+  class InvalidParentError < StandardError; end
+
+  # Every PromptExecution reachable from this chat's messages.
+  #
+  # Scoping the parent lookup to this relation is what stops a stale or
+  # crafted execution_id from grafting a branch onto another chat's tree.
+  # PromptExecution#ancestors walks `previous` with no chat boundary, so a
+  # cross-chat parent would silently feed another conversation's turns into
+  # this one's LLM context.
+  def prompt_executions
+    PromptNavigator::PromptExecution.where(
+      id: messages.where.not(prompt_navigator_prompt_execution_id: nil)
+                  .select(:prompt_navigator_prompt_execution_id)
+    )
+  end
+
+  # Resolve a request-supplied parent into a previous_id. Deliberately strict:
+  # it never guesses.
+  #
+  #   ROOT_PARENT     -> nil  (clean start, no ancestors)
+  #   <execution_id>  -> that PE's id, and it must belong to THIS chat
+  #   blank / unknown -> InvalidParentError
+  #
+  # The previous behaviour treated a blank value as "chain to whatever is
+  # chronologically last in the chat". That is not the same node as the one
+  # the user is looking at once the chat has branched, and the field carrying
+  # it is maintained by client-side JS that fails silently — so a dropped or
+  # stale value silently reparented the prompt onto a different branch, which
+  # then fed the wrong history to the model. An error is the correct outcome.
+  def resolve_parent!(parent)
+    parent = parent.to_s
+    raise InvalidParentError, "a parent is required" if parent.blank?
+    return nil if parent == ROOT_PARENT
+
+    pe = prompt_executions.find_by(execution_id: parent)
+    raise InvalidParentError, "parent #{parent.inspect} is not part of this chat" if pe.nil?
+
+    pe.id
+  end
+
+  # `previous_id:` is authoritative when supplied — including an explicit nil,
+  # which means a clean start. Request handlers must go through
+  # `resolve_parent!` and pass it, so user input never reaches the implicit
+  # fallback below.
+  #
+  # The positional `branch_from_execution_id` (and its chain-to-tip default)
+  # remains only for programmatic callers and tests, where the value does not
+  # come from a request and "append to the end" is a deliberate convenience.
+  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, previous_id: :unset, llm_platform: nil, image: nil, document: nil)
+    parent_id = if previous_id != :unset
+      previous_id
+    elsif branch_from_execution_id.present?
       PromptNavigator::PromptExecution.find_by(execution_id: branch_from_execution_id)&.id
     else
       messages.where(role: "user").order(:created_at).last&.prompt_navigator_prompt_execution_id
@@ -47,7 +104,7 @@ class Chat < ApplicationRecord
       model: model,
       llm_platform: llm_platform,
       configuration: "",
-      previous_id: previous_id
+      previous_id: parent_id
     )
 
     new_message = messages.create!(

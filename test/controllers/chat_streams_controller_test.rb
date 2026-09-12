@@ -195,7 +195,7 @@ class ChatStreamsControllerTest < ActionDispatch::IntegrationTest
   # in the streaming controller resolves the chat correctly for GET /stream.
   def setup_pending_assistant_turn
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: {
+      post chats_path, params: { parent: Chat::ROOT_PARENT,
         message: "what is the capital of France?",
         api_key_uuid: "ollama-local", model: "llama3.2", family: "ollama"
       }, headers: { "User-Agent" => modern_browser_ua }

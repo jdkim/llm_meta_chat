@@ -22,7 +22,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
   test "an anonymous visitor's POST /chats stamps the new chat with the browser session_id" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
       assert_difference -> { Chat.where(user_id: nil).count }, 1 do
-        post chats_path, params: { message: "" } # bare submission; no LLM call needed
+        post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" } # bare submission; no LLM call needed
       end
     end
 
@@ -33,7 +33,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
   test "two requests from the same browser session see the same anonymous chats in the sidebar scope" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       chat = Chat.where(user_id: nil).last
       # Sidebar only renders titled chats. Stamp one directly so we can
       # verify it appears in the rendered HTML on the next request.
@@ -48,7 +48,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
   test "a different browser session does NOT see another visitor's anonymous chats" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       chat_a = Chat.where(user_id: nil).last
       chat_a.update!(title: "session A chat")
 
@@ -61,7 +61,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
   test "an anonymous visitor can NOT view another session's anonymous chat by UUID" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       chat_a = Chat.where(user_id: nil).last
 
       sess_b = open_session
@@ -75,7 +75,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
   test "an anonymous visitor can delete their own chat (same session)" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       chat = Chat.where(user_id: nil).last
 
       assert_difference -> { Chat.count }, -1 do
@@ -86,7 +86,7 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
   test "an anonymous visitor can NOT delete another session's anonymous chat" do
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       chat_a = Chat.where(user_id: nil).last
 
       sess_b = open_session
@@ -108,8 +108,8 @@ class AnonymousChatPersistenceTest < ActionDispatch::IntegrationTest
 
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
       # As anonymous: create two chats.
-      post chats_path, params: { message: "" }
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
       anon_chats = Chat.where(user_id: nil).to_a
       assert_equal 2, anon_chats.size
 

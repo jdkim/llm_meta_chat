@@ -14,7 +14,7 @@ class MessageOrderTest < ActionDispatch::IntegrationTest
 
   def chat_with_a_turn
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
-      post chats_path, params: { message: "" }
+      post chats_path, params: { parent: Chat::ROOT_PARENT, message: "" }
     end
     chat = Chat.where(user_id: nil).order(:id).last
     pe, _user = chat.add_user_message("the question", "ollama-local", "qwen3-8-27b",

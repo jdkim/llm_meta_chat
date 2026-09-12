@@ -94,10 +94,14 @@
           messageInput.dispatchEvent(event);
         }
 
-        // Update branch_from_uuid to the latest prompt execution
-        const branchField = document.getElementById('branch_from_uuid');
-        if (branchField) {
-          branchField.value = '<%= @prompt_execution&.execution_id %>';
+        // Point the composer at the node just created. The server no longer
+        // guesses a parent, so a missing field is a real failure rather than
+        // something a fallback quietly absorbs — say so instead of passing.
+        const parentField = document.getElementById('parent_uuid');
+        if (parentField) {
+          parentField.value = '<%= @prompt_execution&.execution_id %>';
+        } else {
+          console.error('parent_uuid field missing; the next prompt will be rejected');
         }
 
         // Make this tab's chat identity URL-local so cross-tab navigation

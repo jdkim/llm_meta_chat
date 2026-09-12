@@ -20,7 +20,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
 
   test "POST /chats with a text/markdown document stores it as a data-URI link at the head of the prompt" do
     assert_difference -> { PromptNavigator::PromptExecution.count }, 1 do
-      post chats_path, params: {
+      post chats_path, params: { parent: Chat::ROOT_PARENT,
         message: "please summarize",
         document: fixture_file_upload("notes.md", "text/markdown")
       }
@@ -31,7 +31,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
 
   test "POST /chats with a non-text mime type (image/png) uploaded as document is rejected" do
     assert_difference -> { PromptNavigator::PromptExecution.count }, 1 do
-      post chats_path, params: {
+      post chats_path, params: { parent: Chat::ROOT_PARENT,
         message: "attempt image as doc",
         document: fixture_file_upload("tiny.png", "image/png")
       }
@@ -46,7 +46,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
     big.write("x" * (2 * 1024 * 1024))
     big.rewind
     assert_difference -> { PromptNavigator::PromptExecution.count }, 1 do
-      post chats_path, params: {
+      post chats_path, params: { parent: Chat::ROOT_PARENT,
         message: "too big",
         document: Rack::Test::UploadedFile.new(big.path, "text/plain")
       }
@@ -68,7 +68,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
 
   test "POST /chats with a PDF document stores it as a data-URI link with application/pdf mime" do
     assert_difference -> { PromptNavigator::PromptExecution.count }, 1 do
-      post chats_path, params: {
+      post chats_path, params: { parent: Chat::ROOT_PARENT,
         message: "read this",
         document: fixture_file_upload("tiny.pdf", "application/pdf")
       }
@@ -82,7 +82,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
     accepted_pdf = Tempfile.new([ "med", ".pdf" ], binmode: true)
     accepted_pdf.write("%PDF-1.4\n" + ("x" * (2 * 1024 * 1024)))
     accepted_pdf.rewind
-    post chats_path, params: {
+    post chats_path, params: { parent: Chat::ROOT_PARENT,
       message: "accept me",
       document: Rack::Test::UploadedFile.new(accepted_pdf.path, "application/pdf")
     }
@@ -93,7 +93,7 @@ class ChatsControllerUploadTest < ActionDispatch::IntegrationTest
     big_pdf = Tempfile.new([ "big", ".pdf" ], binmode: true)
     big_pdf.write("%PDF-1.4\n" + ("x" * (11 * 1024 * 1024)))
     big_pdf.rewind
-    post chats_path, params: {
+    post chats_path, params: { parent: Chat::ROOT_PARENT,
       message: "too big",
       document: Rack::Test::UploadedFile.new(big_pdf.path, "application/pdf")
     }

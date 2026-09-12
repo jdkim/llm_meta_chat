@@ -96,17 +96,30 @@ class ChatsController < ApplicationController
       end
 
       # Add user message (will be rendered via turbo stream)
+      # Resolve the parent strictly before writing anything: a blank or stale
+      # value must fail loudly rather than silently reparent the prompt.
+      begin
+        parent_id = @chat.resolve_parent!(params[:parent])
+      rescue Chat::InvalidParentError => e
+        @error_message = e.message
+        respond_to do |format|
+          format.turbo_stream
+          format.html { redirect_to new_chat_path, alert: e.message }
+        end
+        return
+      end
+
       @prompt_execution, @user_message = @chat.add_user_message(params[:message],
                                                                 params[:api_key_uuid],
                                                                 params[:model],
-                                                                params[:branch_from_uuid],
+                                                                previous_id: parent_id,
                                                                 llm_platform: params[:family],
                                                                 image: uploaded_image_payload,
                                                                 document: uploaded_document_payload)
       # Push to history for rendering
       push_to_history @prompt_execution
       # Set active message UUID for highlighting in UI
-      set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
+      set_active_message_uuid(@prompt_execution&.execution_id || active_parent_uuid)
 
       # The assistant response is streamed by ChatStreamsController (SSE).
       # The streaming bubble is rendered by create.turbo_stream.erb and opens
@@ -207,15 +220,28 @@ class ChatsController < ApplicationController
         return
       end
 
+      # Resolve the parent strictly before writing anything: a blank or stale
+      # value must fail loudly rather than silently reparent the prompt.
+      begin
+        parent_id = @chat.resolve_parent!(params[:parent])
+      rescue Chat::InvalidParentError => e
+        @error_message = e.message
+        respond_to do |format|
+          format.turbo_stream { render :create }
+          format.html { redirect_to chat_path(@chat.uuid), alert: e.message }
+        end
+        return
+      end
+
       @prompt_execution, @user_message = @chat.add_user_message(params[:message],
                                                                 params[:api_key_uuid],
                                                                 params[:model],
-                                                                params[:branch_from_uuid],
+                                                                previous_id: parent_id,
                                                                 llm_platform: params[:family],
                                                                 image: uploaded_image_payload,
                                                                 document: uploaded_document_payload)
       push_to_history @prompt_execution
-      set_active_message_uuid(@prompt_execution&.execution_id || params.dig(:chat, :branch_from_uuid))
+      set_active_message_uuid(@prompt_execution&.execution_id || active_parent_uuid)
 
       @generation_settings_json = params[:generation_settings_json]
       @tool_ids = Array(params[:tool_ids]).reject(&:blank?)
@@ -252,6 +278,13 @@ class ChatsController < ApplicationController
   # server's Api::ChatStreamsController::MAX_DOCUMENT_BYTES.
   MAX_PDF_BYTES = 10 * 1024 * 1024
   PDF_MIME = "application/pdf"
+
+  # The parent the UI was parked on, for history highlighting. ROOT_PARENT is
+  # a sentinel, not a node, so it highlights nothing.
+  def active_parent_uuid
+    value = params[:parent].presence
+    value unless value == Chat::ROOT_PARENT
+  end
 
   class InvalidGenerationSettingsError < StandardError; end
 

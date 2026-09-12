@@ -160,4 +160,16 @@ module ApplicationHelper
     # keeps the visual position consistent.
     (block + rendered).html_safe
   end
+
+  # Value for the composer's `parent` field.
+  #
+  # Computed server-side so the request never needs interpreting: the node the
+  # user is parked on, else the current tip, else the root sentinel for an
+  # empty chat. Chat#resolve_parent! rejects anything blank, so this must
+  # always produce a concrete value.
+  def parent_field_value(chat = nil)
+    @parent_uuid.presence ||
+      chat&.ordered_prompt_executions&.last&.execution_id ||
+      Chat::ROOT_PARENT
+  end
 end

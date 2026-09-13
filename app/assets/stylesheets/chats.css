@@ -1608,18 +1608,34 @@ button.model-grid-locked-link {
 .lh-check-on { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
 
 /* Synthetic root node in the history pane.
-   It is an ordinary .history-card so the tree reads as one shape with a
-   single visible origin — every root names it as parent and gets an arrow
-   from it. Only the label is toned down, to signal that this node is the
-   empty state rather than a prompt someone ran: there is nothing to delete
-   and no model to badge. */
-.history-card-start .history-card-prompt {
-  color: var(--muted-text, #666);
-  font-style: italic;
+   It keeps .history-card's box so the tree reads as one shape with a single
+   visible origin — every root names it as parent and gets an arrow from it.
+   Everything inside the box is then deliberately unlike a prompt card: a
+   tinted ground, a centred label (there is no delete button or model badge
+   competing for the row), and the serif stack used elsewhere in the app, so
+   it reads as a marker rather than something someone typed.
+
+   Selectors are doubled up (.history-card.history-card-start) because the
+   gem's own .history-card rules carry equal specificity and would otherwise
+   win on source order. */
+.history-card.history-card-start {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
-.history-card-start.is-active .history-card-prompt {
-  color: var(--accent-color, #3b7dd8);
-  font-style: normal;
+.history-card.history-card-start .history-card-prompt {
+  text-align: center;
+  font-family: Georgia, "Charter", "Iowan Old Style", "Source Serif Pro", serif;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: #475569;
+}
+
+.history-card.history-card-start.is-active {
+  background: #e8f0ff;
+}
+
+.history-card.history-card-start.is-active .history-card-prompt {
+  color: #0b5ed7;
   font-weight: 600;
 }

@@ -28,7 +28,11 @@
 <body>
 <%= render "layouts/header" %>
 
-<div class="body">
+<%# The supplements controller spans the composer (centre) and the history
+    pane (right), so it is mounted on their common ancestor. The pane is
+    replaced wholesale by a Turbo Stream after each prompt, which is also why
+    it uses a delegated click listener rather than per-card actions. %>
+<div class="body" data-controller="supplements" data-supplements-max-value="<%= Chat::MAX_SUPPLEMENTS %>">
   <%# Sidebar is visible for everyone. Anonymous chats persist via the
       browser session cookie (chats.session_id). CSV-download routes
       require login (the controller has authenticate_user! on them), so

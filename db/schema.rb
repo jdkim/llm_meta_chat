@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_04_084953) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_13_051541) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_084953) do
     t.index ["previous_id"], name: "idx_2679991_index_prompt_navigator_prompt_executions_on_previou"
   end
 
+  create_table "prompt_navigator_supplements", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.bigint "prompt_execution_id", null: false
+    t.bigint "supplement_execution_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["prompt_execution_id", "supplement_execution_id"], name: "idx_pn_supplements_pair", unique: true
+    t.index ["prompt_execution_id"], name: "idx_pn_supplements_on_execution"
+    t.index ["supplement_execution_id"], name: "idx_pn_supplements_on_supplement"
+  end
+
   create_table "users", force: :cascade do |t|
     t.timestamptz "created_at"
     t.text "email"
@@ -68,4 +79,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_04_084953) do
   add_foreign_key "messages", "chats", name: "messages_chat_id_fkey"
   add_foreign_key "messages", "prompt_navigator_prompt_executions", name: "messages_prompt_navigator_prompt_execution_id_fkey"
   add_foreign_key "prompt_navigator_prompt_executions", "prompt_navigator_prompt_executions", column: "previous_id", name: "prompt_navigator_prompt_executions_previous_id_fkey"
+  add_foreign_key "prompt_navigator_supplements", "prompt_navigator_prompt_executions", column: "prompt_execution_id"
+  add_foreign_key "prompt_navigator_supplements", "prompt_navigator_prompt_executions", column: "supplement_execution_id"
 end

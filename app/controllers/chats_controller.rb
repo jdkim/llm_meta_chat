@@ -108,6 +108,7 @@ class ChatsController < ApplicationController
       # value must fail loudly rather than silently reparent the prompt.
       begin
         parent_id = @chat.resolve_parent!(params[:parent])
+        supplements = @chat.resolve_supplements!(params[:supplements].to_s.split(","))
       rescue Chat::InvalidParentError => e
         @error_message = e.message
         respond_to do |format|
@@ -123,7 +124,8 @@ class ChatsController < ApplicationController
                                                                 previous_id: parent_id,
                                                                 llm_platform: params[:family],
                                                                 image: uploaded_image_payload,
-                                                                document: uploaded_document_payload)
+                                                                document: uploaded_document_payload,
+                                                                supplements: supplements)
       # Push to history for rendering
       push_to_history @prompt_execution
       # Set active message UUID for highlighting in UI
@@ -232,6 +234,7 @@ class ChatsController < ApplicationController
       # value must fail loudly rather than silently reparent the prompt.
       begin
         parent_id = @chat.resolve_parent!(params[:parent])
+        supplements = @chat.resolve_supplements!(params[:supplements].to_s.split(","))
       rescue Chat::InvalidParentError => e
         @error_message = e.message
         respond_to do |format|
@@ -247,7 +250,8 @@ class ChatsController < ApplicationController
                                                                 previous_id: parent_id,
                                                                 llm_platform: params[:family],
                                                                 image: uploaded_image_payload,
-                                                                document: uploaded_document_payload)
+                                                                document: uploaded_document_payload,
+                                                                supplements: supplements)
       push_to_history @prompt_execution
       set_active_message_uuid(@prompt_execution&.execution_id || active_parent_uuid)
 
@@ -263,6 +267,21 @@ class ChatsController < ApplicationController
     end
   rescue ActiveRecord::RecordNotFound
     redirect_to root_path, alert: "Chat not found."
+  end
+
+  # Renders the reference block a pending selection would send, as plain text,
+  # for the composer's "show what will be sent" panel.
+  #
+  # Read-only, and scoped exactly like the send path: resolve_supplements!
+  # drops ids that are not part of this chat, so the preview cannot be turned
+  # into a way of reading another conversation's content either.
+  def reference_preview
+    chat = visible_chats_scope.find_by!(uuid: params[:id])
+    supplements = chat.resolve_supplements!(params[:supplements].to_s.split(","))
+
+    render plain: chat.reference_preview(supplements).to_s
+  rescue Chat::InvalidParentError => e
+    render plain: e.message, status: :unprocessable_entity
   end
 
   private

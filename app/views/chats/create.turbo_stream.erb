@@ -97,6 +97,11 @@
           console.error('parent_uuid field missing; the next prompt will be rejected');
         }
 
+        // Citations were consumed by the prompt just sent. They are a per-turn
+        // annotation and are deliberately not inherited by the next one, so
+        // clear the selection, its chips, and the card highlighting.
+        document.dispatchEvent(new CustomEvent('supplements:reset'));
+
         // Make this tab's chat identity URL-local so cross-tab navigation
         // can't silently re-target subsequent prompts. After the first POST
         // /chats, swap the URL bar to /chats/<uuid> and point the form at

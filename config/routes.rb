@@ -17,6 +17,9 @@ Rails.application.routes.draw do
       patch :toggle_public
       get :download_csv
       post :add_prompt
+      # Renders exactly the reference block a pending selection would send, so
+      # the composer can show it rather than describe it.
+      get :reference_preview
     end
     resource :stream, only: [ :show ], controller: "chat_streams"
   end

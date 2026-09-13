@@ -9,8 +9,22 @@
   </div>
   <div class="message-content">
     <% if message.role == 'user' %>
-      <% img, text = split_attached_image_html(message.prompt_navigator_prompt_execution&.prompt) %>
+      <% pe = message.prompt_navigator_prompt_execution %>
+      <% img, text = split_attached_image_html(pe&.prompt) %>
       <% doc, text = split_attached_document_html(text) %>
+      <%# Cited nodes are attached to the turn at send time and deliberately
+          not folded into the stored prompt, so without this the transcript
+          showed less than the model was given — the typed text only. Rendered
+          from the edges through the same renderer as the send path, so the two
+          cannot disagree. Collapsed by default, like the assistant's reasoning,
+          and placed above the prompt because that is the order it is sent in. %>
+      <% cited = pe&.supplements.to_a %>
+      <% if cited.any? %>
+        <details class="message-references">
+          <summary>Referenced material (<%= cited.size %>)</summary>
+          <pre class="message-references-content"><%= message.chat.reference_preview(cited) %></pre>
+        </details>
+      <% end %>
       <%= img if img %>
       <%= doc if doc %>
       <%= simple_format(text) %>

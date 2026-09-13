@@ -72,6 +72,38 @@ class Chat < ApplicationRecord
     pe.id
   end
 
+  # Cap on cited nodes per prompt. The material is injected verbatim, so the
+  # cost of a turn is user-controlled and otherwise unbounded; five is enough
+  # for the comparisons this exists to serve and keeps the arrows legible.
+  MAX_SUPPLEMENTS = 5
+
+  # Resolve request-supplied execution_ids into PromptExecutions to cite.
+  #
+  # Scoped to this chat for the same reason `resolve_parent!` is: the tree
+  # walks `previous` with no chat boundary, so an unscoped id would be a way to
+  # read another conversation's content into this one's context. Unlike a
+  # parent, a bad supplement is not structural — it is dropped rather than
+  # raising, because a stale id in a background tab should not cost the user
+  # their prompt.
+  def resolve_supplements!(ids)
+    ids = Array(ids).map(&:to_s).reject(&:blank?).uniq
+    return [] if ids.empty?
+
+    raise InvalidParentError, "at most #{MAX_SUPPLEMENTS} supplements" if ids.size > MAX_SUPPLEMENTS
+
+    found = prompt_executions.where(execution_id: ids).index_by(&:execution_id)
+    ids.filter_map { |id| found[id] }
+  end
+
+  # Exactly the block the next prompt would carry, for a pending selection the
+  # composer has not sent yet. Public because the composer's preview endpoint
+  # calls it, and deliberately routed through the same renderer as the real
+  # send path: a preview that assembled its own text could drift from what is
+  # actually sent, which would be worse than showing nothing.
+  def reference_preview(supplements)
+    reference_block(PromptNavigator::PromptExecution.group_supplements(supplements))
+  end
+
   # `previous_id:` is authoritative when supplied — including an explicit nil,
   # which means a clean start. Request handlers must go through
   # `resolve_parent!` and pass it, so user input never reaches the implicit
@@ -80,7 +112,7 @@ class Chat < ApplicationRecord
   # The positional `branch_from_execution_id` (and its chain-to-tip default)
   # remains only for programmatic callers and tests, where the value does not
   # come from a request and "append to the end" is a deliberate convenience.
-  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, previous_id: :unset, llm_platform: nil, image: nil, document: nil)
+  def add_user_message(message, llm_uuid, model, branch_from_execution_id = nil, previous_id: :unset, llm_platform: nil, image: nil, document: nil, supplements: [])
     parent_id = if previous_id != :unset
       previous_id
     elsif branch_from_execution_id.present?
@@ -106,6 +138,19 @@ class Chat < ApplicationRecord
       configuration: "",
       previous_id: parent_id
     )
+
+    # Cited nodes are recorded as edges, in the order the user picked them.
+    # Deliberately not folded into `prompt`: the stored prompt stays what the
+    # user typed, and the reference block is rebuilt from these edges at send
+    # time — otherwise the history card would render a wall of pasted text and
+    # regenerating the turn would double it.
+    Array(supplements).each_with_index do |supplement, i|
+      PromptNavigator::Supplement.create!(
+        prompt_execution: prompt_execution,
+        supplement_execution: supplement,
+        position: i
+      )
+    end
 
     new_message = messages.create!(
       role: "user",
@@ -241,7 +286,10 @@ class Chat < ApplicationRecord
   def ordered_prompt_executions
     messages
       .where(role: "user")
-      .includes(:prompt_navigator_prompt_execution)
+      # `supplements` is preloaded because the history card reads it per card
+      # to emit data-supplement-uuids; without this the pane issues one query
+      # per row.
+      .includes(prompt_navigator_prompt_execution: :supplements)
       .order(:created_at)
       .to_a
       .select { |msg| msg.prompt_navigator_prompt_execution }
@@ -381,6 +429,14 @@ class Chat < ApplicationRecord
       current_text = inline_document_content(attached_document, current_text)
     end
 
+    # Cited nodes ride with THIS turn, ahead of what the user typed — not in
+    # the system prompt (that channel is operating instructions, and reference
+    # material there would claim instruction-level standing) and not as prior
+    # turns (which is the dialogue channel wire format v2 deliberately cleared).
+    # The block sits next to the question that refers to it, which is also what
+    # lets a prompt say "the referenced answers" and have that resolve.
+    current_text = prepend_reference_block(pe, current_text)
+
     # Image-generation models don't take prior context. Summarizing through
     # an image model would just generate an image as the "summary".
     return [ [], current_text ] if image_model?(prompt_execution.model)
@@ -427,6 +483,49 @@ class Chat < ApplicationRecord
     end
 
     [ messages, current_text ]
+  end
+
+  # Render the cited nodes as a labelled block ahead of the user's text.
+  #
+  # Labels are the point, not decoration: the presets teach users to write "the
+  # referenced answers" or "the Gemini answer", and those phrases only resolve
+  # if the material is numbered and attributed. Grouping by identical prompt
+  # (done in the gem) means the common case — one question put to several
+  # models — reads as one question with N answers rather than the same question
+  # repeated N times.
+  def prepend_reference_block(prompt_execution, current_text)
+    block = reference_block(prompt_execution.supplement_groups)
+    return current_text if block.nil?
+
+    "#{block}\n#{current_text}"
+  end
+
+
+  def reference_block(groups)
+    return nil if groups.empty?
+
+    index = 0
+    sections = groups.map do |group|
+      answers = group[:answers].map do |answer|
+        index += 1
+        label = answer[:model].presence || answer[:llm_platform].presence || "unknown model"
+        "[#{index}] #{label} — #{strip_inline_attachments(answer[:response])}"
+      end
+
+      # A group of one is an ordinary question/answer pair; only a real group
+      # needs the "same question" framing.
+      heading = if group[:answers].size > 1
+        "The same question was put to several models."
+      end
+
+      [ heading, "Question: #{strip_inline_attachments(group[:prompt])}", *answers ].compact.join("\n")
+    end
+
+    <<~BLOCK.rstrip
+      --- Referenced material (from other branches of this conversation) ---
+      #{sections.join("\n\n")}
+      --- End of referenced material ---
+    BLOCK
   end
 
   def image_model?(model_meta_id)

@@ -60,7 +60,12 @@ class PromptsController < ApplicationController
 
     ActiveRecord::Base.transaction do
       Message.where(prompt_navigator_prompt_execution_id: pe.id).delete_all
-      pe.delete
+      # `delete_set!` rather than `pe.delete`. A raw delete bypasses callbacks,
+      # so `dependent:` never fires and the prompt's supplement edges survive
+      # it — and those are a foreign key into this very table, so the delete
+      # then fails with PG::ForeignKeyViolation. It bites in both directions:
+      # a leaf that cites something, and a leaf that something else cites.
+      PromptNavigator::PromptExecution.delete_set!([ pe.id ])
     end
 
     redirect_to chat_path(chat.uuid), notice: "Prompt deleted."

@@ -1639,3 +1639,166 @@ button.model-grid-locked-link {
   color: #0b5ed7;
   font-weight: 600;
 }
+
+/* Cited history nodes ("supplements").
+   Violet throughout, matching the dotted arrows history_controller draws for
+   these edges — the colour is the only thing tying the card in the pane to the
+   chip above the composer, so the two must not drift. */
+.history-card.is-supplement {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.18);
+}
+
+.supplement-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* `hidden` is honoured by the UA rule `[hidden] { display: none }`, which an
+   author `display: flex` silently outranks — so both containers stayed visible
+   whatever the controller set. Restate it here at author level. */
+.supplement-chips[hidden],
+.supplement-presets[hidden],
+.supplement-note[hidden],
+.supplement-preview[hidden] {
+  display: none;
+}
+
+/* The assembled block, exactly as the model will receive it. Monospace and
+   scrollable: it is machine text, and a long citation should not push the
+   composer off screen. */
+.supplement-preview {
+  max-height: 180px;
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid #ddd6fe;
+  border-radius: 6px;
+  background: #faf9ff;
+  color: #3c366b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.supplement-reveal {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 0.72rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Says where a citation actually goes. Deliberately quiet — it is an
+   explanation, not a control. */
+.supplement-note {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--muted-text, #666);
+}
+
+.supplement-chips-label,
+.supplement-presets-label {
+  font-size: 0.78rem;
+  color: var(--muted-text, #666);
+}
+
+.supplement-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 220px;
+  padding: 2px 6px;
+  border: 1px solid #ddd6fe;
+  border-radius: 999px;
+  background: #f5f3ff;
+  font-size: 0.78rem;
+  color: #4c1d95;
+}
+
+.supplement-chip-index {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #7c3aed;
+}
+
+/* The chip carries a prompt preview, which can be arbitrarily long. */
+.supplement-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supplement-chip-remove {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.supplement-chip-remove:hover {
+  color: #4c1d95;
+}
+
+.supplement-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.supplement-preset {
+  padding: 2px 10px;
+  border: 1px solid #ddd6fe;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b21b6;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.supplement-preset:hover {
+  background: #f5f3ff;
+  border-color: #7c3aed;
+}
+
+/* What a user turn actually carried, beyond what was typed. Collapsed by
+   default and styled like the assistant's reasoning block: available on
+   demand, never in the way. It exists because the stored prompt is only the
+   typed text — without it the transcript showed less than the model got. */
+.message-references {
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+}
+
+.message-references > summary {
+  color: #7c3aed;
+  cursor: pointer;
+}
+
+.message-references-content {
+  max-height: 220px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid #ddd6fe;
+  border-radius: 6px;
+  background: #faf9ff;
+  color: #3c366b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

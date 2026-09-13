@@ -1,8 +1,9 @@
 <%
   # The history pane, shared by the full page render and the Turbo Stream
   # refresh so the two cannot drift. It uses prompt_navigator's card partial
-  # but not its `_history` wrapper, because the wrapper has no place to put
-  # the synthetic root node below.
+  # (overridden locally — see app/views/prompt_navigator/_history_card) but
+  # not its `_history` wrapper, because the wrapper has no place to put the
+  # synthetic root node below.
   chat        = local_assigns[:chat]
   history     = local_assigns[:history] || []
   active_uuid = local_assigns[:active_uuid]
@@ -16,27 +17,45 @@
 <h2>History</h2>
 
 <% if chat %>
-  <%# The tree has no record for "before the first prompt", so until now there
-      was nothing to click to begin a fresh lineage — the first prompt was the
-      root by accident of being first. This parks the composer at
-      Chat::ROOT_PARENT, which resolve_parent! maps to previous_id = nil: a
-      branch with no ancestors, so build_context yields no prior turns.
-      Deliberately neutral rather than "re-run with another model" — the same
-      prompt on a different model and an entirely different prompt are both
-      valid reasons to want a clean start. %>
-  <%= link_to chat_path(chat.uuid, from: Chat::ROOT_PARENT),
-              class: "history-start-card#{' is-active' if parked_at_root}",
-              title: "Compose with no history — starts a new branch from the empty state" do %>
-    <span class="history-start-plus">+</span>
-    <span class="history-start-label">New from start</span>
-  <% end %>
-<% end %>
-
-<% if history.present? %>
   <div class="history-stack" id="history-stack" data-controller="history">
+    <%# The tree has no record for "before the first prompt", so until this
+        existed there was nothing to click to begin a fresh lineage — the
+        first prompt was the root by accident of being first. This parks the
+        composer at Chat::ROOT_PARENT, which resolve_parent! maps to
+        previous_id = nil: a branch with no ancestors, so build_context
+        yields no prior turns.
+
+        It is rendered as an ordinary card, and every root names it as
+        parent, so the tree has one visible origin instead of several
+        unexplained top-level entries. Deliberately neutral wording rather
+        than "re-run with another model" — the same prompt on a different
+        model and an entirely different prompt are both valid reasons to
+        want a clean start. %>
+    <div class="history-card history-card-start<%= ' is-active' if parked_at_root %>"
+         data-history-target="cards"
+         data-uuid="<%= Chat::ROOT_PARENT %>">
+      <div class="history-card-row">
+        <%= link_to chat_path(chat.uuid, from: Chat::ROOT_PARENT),
+                    class: "history-card-link",
+                    title: "Compose with no history — starts a new branch from the empty state" do %>
+          <div class="history-card-prompt">Start</div>
+        <% end %>
+      </div>
+    </div>
+    <%# The gem renders the adjacency arrow *after* a card, so the link from
+        Start down to the first root has to be emitted here. Later roots are
+        not adjacent to Start and get a curved SVG arrow from history_controller
+        instead. %>
+    <% if history.first&.previous_id.nil? %>
+      <div class="history-straight-arrow">↓</div>
+    <% end %>
+
     <% history.each_with_index do |ann, idx| %>
       <%= render "prompt_navigator/history_card", locals: {
-        ann: ann,
+        # A root has no `previous`, so the gem's card would draw no arrow at
+        # all. RootLinkedExecution reports the Start node as its parent, which
+        # is what makes every root hang off one visible origin.
+        ann: ann.previous_id.nil? ? RootLinkedExecution.new(ann) : ann,
         next_ann: history[idx + 1],
         is_active: ann.execution_id == active_uuid,
         card_path: ->(uuid) { prompt_path(uuid) },

@@ -1608,36 +1608,18 @@ button.model-grid-locked-link {
 .lh-check-on { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
 
 /* Synthetic root node in the history pane.
-   Deliberately distinct from .history-card: it is not a prompt execution and
-   has no uuid, no parent and no delete affordance. Nothing ever points an
-   arrow at it, because a root branch genuinely has no parent. */
-.history-start-card {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.6rem;
-  margin-bottom: 0.5rem;
-  border: 1px dashed var(--border-color, #c7c7c7);
-  border-radius: 6px;
+   It is an ordinary .history-card so the tree reads as one shape with a
+   single visible origin — every root names it as parent and gets an arrow
+   from it. Only the label is toned down, to signal that this node is the
+   empty state rather than a prompt someone ran: there is nothing to delete
+   and no model to badge. */
+.history-card-start .history-card-prompt {
   color: var(--muted-text, #666);
-  font-size: 0.82rem;
-  text-decoration: none;
-  cursor: pointer;
+  font-style: italic;
 }
 
-.history-start-card:hover {
-  border-style: solid;
-  color: var(--text-color, #222);
-}
-
-.history-start-card.is-active {
-  border-style: solid;
-  border-color: var(--accent-color, #3b7dd8);
+.history-card-start.is-active .history-card-prompt {
   color: var(--accent-color, #3b7dd8);
+  font-style: normal;
   font-weight: 600;
-}
-
-.history-start-plus {
-  font-weight: 700;
-  line-height: 1;
 }

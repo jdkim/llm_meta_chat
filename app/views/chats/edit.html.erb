@@ -66,19 +66,21 @@
           user guessing what the other side was, and read as plural even with a
           single citation. "The referenced material" is also a mass noun, so it
           works for one citation or five. %>
-      <% parked_at_root = @parent_uuid == Chat::ROOT_PARENT %>
+      <%# The two comparisons differ in shape, not in tone. "Fair" puts every
+          answer on the same footing and asks for one N-way reading. "Pivot"
+          anchors on the primary — the node the composer is parked on, of which
+          there is always exactly one — and asks for a separate reading of each
+          reference against it: N pairwise comparisons rather than one pooled
+          verdict. They suit different questions: "which of these is best?"
+          versus "what does each of these add to mine?". %>
       <div class="supplement-presets" data-supplements-target="presets" hidden>
         <span class="supplement-presets-label">Start from:</span>
-        <% if parked_at_root %>
-          <%# No previous answer to compare against from the empty state. %>
-          <button type="button" class="supplement-preset"
-                  data-action="click->supplements#applyPreset"
-                  data-preset="Compare the referenced material, referring to each answer by its model name. Say where they agree, where they differ, and which differences actually matter.">Compare</button>
-        <% else %>
-          <button type="button" class="supplement-preset"
-                  data-action="click->supplements#applyPreset"
-                  data-preset="Compare your previous answer with the referenced material, referring to each answer by its model name. Say where they agree, where they differ, and which differences actually matter.">Compare</button>
-        <% end %>
+        <button type="button" class="supplement-preset"
+                data-action="click->supplements#applyPreset"
+                data-preset="Compare your previous answer with the referenced material, referring to each answer by its model name. Say where they agree, where they differ, and which differences actually matter.">Fair comparison</button>
+        <button type="button" class="supplement-preset"
+                data-action="click->supplements#applyPreset"
+                data-preset="Take your previous answer as the pivot and compare it against each referenced answer in turn, one pair at a time, naming each by its model name. For each pair say what that answer adds, what it contradicts, and what it misses relative to the pivot. Do not pool them into a single verdict.">Pivot comparison</button>
         <button type="button" class="supplement-preset"
                 data-action="click->supplements#applyPreset"
                 data-preset="Treat the referenced material as supplementary perspectives on the discussion so far, referring to each by its model name. Then ">Aggregate</button>

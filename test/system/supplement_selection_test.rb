@@ -152,7 +152,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     visit chat_path(chat.uuid)
     ctrl_click(card_for("question alpha"))
 
-    click_button "Compare"
+    click_button "Fair comparison"
 
     assert_match(/referring to each answer by its model name/, find("#message-input").value)
     assert_no_selector ".supplement-presets", visible: true

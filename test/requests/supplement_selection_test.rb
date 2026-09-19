@@ -58,9 +58,10 @@ class SupplementSelectionTest < ActionDispatch::IntegrationTest
       get chat_path(chat.uuid)
     end
 
-    assert_select "button.supplement-preset", count: 2
-    assert_select "button.supplement-preset[data-preset*=?]", "referenced material"
-    assert_select "button.supplement-preset[data-preset*=?]", "supplementary perspectives"
+    assert_select "button.supplement-preset", count: 3
+    assert_select "button.supplement-preset", text: "Fair comparison"
+    assert_select "button.supplement-preset", text: "Pivot comparison"
+    assert_select "button.supplement-preset", text: "Aggregate"
   end
 
   # A citation is reference material; the node the composer sits on is not — it
@@ -77,17 +78,17 @@ class SupplementSelectionTest < ActionDispatch::IntegrationTest
     assert_select "button.supplement-preset[data-preset*=?]", "your previous answer"
   end
 
-  # From the empty state there is no previous answer to compare against, so the
-  # wording must not promise one.
-  test "the compare preset drops that phrasing at the root" do
+  # The pane always has exactly one primary selected, the Start node included,
+  # so the presets are the same wherever the composer is parked.
+  test "the same presets are offered at the root" do
     chat = create_chat_with_one_prompt
 
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, FAMILIES) do
       get chat_path(chat.uuid, from: Chat::ROOT_PARENT)
     end
 
-    assert_select "button.supplement-preset[data-preset*=?]", "Compare the referenced material"
-    assert_select "button.supplement-preset[data-preset*=?]", "your previous answer", false
+    assert_select "button.supplement-preset", count: 3
+    assert_select "button.supplement-preset", text: "Pivot comparison"
   end
 
   # Found in testing: answers are much easier to read back when the model names
@@ -100,8 +101,23 @@ class SupplementSelectionTest < ActionDispatch::IntegrationTest
       get chat_path(chat.uuid)
     end
 
-    assert_select "button.supplement-preset", count: 2
-    assert_select "button.supplement-preset[data-preset*=?]", "by its model name", count: 2
+    assert_select "button.supplement-preset", count: 3
+    assert_select "button.supplement-preset[data-preset*=?]", "model name", count: 3
+  end
+
+  # Fair asks for one N-way reading; pivot asks for N pairwise readings against
+  # the primary. If both said the same thing there would be no reason for two
+  # buttons.
+  test "the two comparisons ask for different shapes of answer" do
+    chat = create_chat_with_one_prompt
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, FAMILIES) do
+      get chat_path(chat.uuid)
+    end
+
+    assert_select "button.supplement-preset[data-preset*=?]", "as the pivot"
+    assert_select "button.supplement-preset[data-preset*=?]", "one pair at a time"
+    assert_select "button.supplement-preset[data-preset*=?]", "Do not pool them"
   end
 
   # The stored prompt is only what was typed, so without this the transcript

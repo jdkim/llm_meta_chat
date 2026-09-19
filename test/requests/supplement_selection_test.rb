@@ -61,7 +61,21 @@ class SupplementSelectionTest < ActionDispatch::IntegrationTest
     assert_select "button.supplement-preset", count: 3
     assert_select "button.supplement-preset", text: "Fair comparison"
     assert_select "button.supplement-preset", text: "Pivot comparison"
-    assert_select "button.supplement-preset", text: "Aggregate"
+    assert_select "button.supplement-preset", text: "Aggregation"
+  end
+
+  # The labels are terse by necessity; the hover text is where each preset
+  # says what shape of answer it asks for.
+  test "every preset carries a hover description" do
+    chat = create_chat_with_one_prompt
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, FAMILIES) do
+      get chat_path(chat.uuid)
+    end
+
+    assert_select "button.supplement-preset", count: 3
+    assert_select "button.supplement-preset:not([title])", false
+    assert_select "button.supplement-preset[title='']", false
   end
 
   # A citation is reference material; the node the composer sits on is not — it

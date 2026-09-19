@@ -1802,3 +1802,85 @@ button.model-grid-locked-link {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Help affordance on the history pane heading.
+   Shown on hover and on keyboard focus — a hover-only tooltip is unreachable
+   without a pointer, and this is the only place the pane's gestures are
+   written down. */
+.history-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #c7ccd4;
+  border-radius: 50%;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  user-select: none;
+}
+
+.history-help:hover,
+.history-help:focus-visible {
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+/* Anchored to the heading rather than to the mark, and stretched between its
+   edges: .sidebar sets overflow-y, which makes the x-axis clip as well, so a
+   bubble wider than the pane would be cut off or add a horizontal scrollbar.
+   Tying it to left/right makes overflowing impossible at any pane width.
+
+   Hidden via visibility/opacity, not the `hidden` attribute: an author
+   `display:` rule silently outranks the UA `[hidden]` rule, which has already
+   caused one always-visible control here. */
+.history-help-bubble {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid #e3e6eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+  color: #374151;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, visibility 0.12s ease;
+}
+
+.history-help:hover ~ .history-help-bubble,
+.history-help:focus ~ .history-help-bubble,
+.history-help-bubble:hover {
+  opacity: 1;
+  visibility: visible;
+}
+
+.history-help-item {
+  display: block;
+}
+
+.history-help-item strong {
+  color: #111827;
+  font-weight: 600;
+}
+

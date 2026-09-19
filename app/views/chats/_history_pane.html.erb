@@ -14,7 +14,29 @@
   non_leaf_ids = history.filter_map(&:previous_id)
 %>
 
-<h2>History</h2>
+<%# The pane's three gestures are not discoverable on their own — clicking a
+    node, branching from it, and ctrl-clicking to cite one all look the same
+    until you try them. A hover/focus bubble is enough; anything louder would
+    sit permanently above a list people use constantly. %>
+<h2 class="history-heading">
+  History
+  <span class="history-help" tabindex="0" role="button"
+        aria-label="How to use the history pane" aria-describedby="history-help-bubble">?</span>
+  <span class="history-help-bubble" id="history-help-bubble" role="tooltip">
+    <span class="history-help-item">
+      <strong>Click</strong> a node to revisit that prompt and its answer.
+    </span>
+    <span class="history-help-item">
+      Entering a new prompt from there <strong>branches</strong> the
+      conversation at that point.
+    </span>
+    <span class="history-help-item">
+      <strong>Ctrl-click</strong> (⌘-click on a Mac) a node to cite it as a
+      <strong>reference</strong> for your next prompt — its question and answer
+      travel with that prompt.
+    </span>
+  </span>
+</h2>
 
 <% if chat %>
   <div class="history-stack" id="history-stack" data-controller="history">

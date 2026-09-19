@@ -181,4 +181,62 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     assert_selector ".supplement-preview", visible: true, text: "Referenced material"
     assert_selector ".supplement-preview", text: "[1] qwen3-8-27b — answer alpha"
   end
+
+  # ----- telling the two highlights apart -----
+
+  def style_of(node, prop)
+    page.evaluate_script("getComputedStyle(arguments[0]).#{prop}", node)
+  end
+
+  # Clicking leaves the pointer on the card, and the gem gives .history-card a
+  # hover shadow that replaces the active ring — so a box-shadow assertion
+  # taken straight after a click measures hover, not state. Park the pointer
+  # somewhere inert first.
+  def move_pointer_away
+    page.driver.browser.action.move_to(find("h2.history-heading").native).perform
+  end
+
+  # Both states used to be a solid coloured border plus a ring, differing only
+  # in hue, so a cited card read as just another active card.
+  test "a cited card is dashed while the active card stays solid" do
+    chat = seed_chat
+    visit chat_path(chat.uuid)
+    ctrl_click(card_for("question alpha"))
+
+    cited  = find(".history-card.is-supplement")
+    active = find(".history-card.is-active")
+
+    assert_equal "dashed", style_of(cited, "borderTopStyle")
+    assert_equal "solid",  style_of(active, "borderTopStyle")
+  end
+
+  # The gem's stylesheet is linked after the app's and its `.is-active` rule
+  # carries equal specificity, so without the id prefix the dashed border loses
+  # the tie on precisely the card that needs both signals.
+  test "a card that is both active and cited keeps both signals" do
+    chat = seed_chat
+    visit chat_path(chat.uuid)
+    active_text = find(".history-card.is-active .history-card-prompt").text
+    ctrl_click(card_for(active_text))
+
+    both = find(".history-card.is-active.is-supplement")
+    move_pointer_away
+
+    assert_equal "dashed", style_of(both, "borderTopStyle"),
+                 "the reference border must survive the active rule"
+    assert_includes style_of(both, "boxShadow"), "rgba(0, 123, 255",
+                    "the active ring must survive being cited"
+  end
+
+  # A plain card must not pick up either treatment.
+  test "an uninvolved card carries neither highlight" do
+    chat = seed_chat
+    visit chat_path(chat.uuid)
+    ctrl_click(card_for("question alpha"))
+
+    plain = find(".history-card", text: "question beta")
+
+    assert_equal "solid", style_of(plain, "borderTopStyle")
+    assert_no_selector ".history-card.is-supplement", text: "question beta"
+  end
 end

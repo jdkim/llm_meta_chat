@@ -1643,10 +1643,25 @@ button.model-grid-locked-link {
 /* Cited history nodes ("supplements").
    Violet throughout, matching the dotted arrows history_controller draws for
    these edges — the colour is the only thing tying the card in the pane to the
-   chip above the composer, so the two must not drift. */
-.history-card.is-supplement {
+   chip above the composer, so the two must not drift.
+
+   Dashed, not solid. The active card is already a solid coloured border plus a
+   2px ring, so a cited card styled the same way differed only in hue and read
+   as "another blue highlight". A dashed edge says *reference* structurally,
+   and echoes the dashed arrows drawn for the same relationship.
+
+   Deliberately no box-shadow here: the ring belongs to .is-active alone, so a
+   card that is both keeps the ring (you are here) and takes the dashed border
+   (it is also cited) — two signals that do not fight. Leaving box-shadow
+   untouched also preserves the gem's hover lift.
+
+   The #history-stack prefix is load-bearing. prompt_navigator/history.css is
+   linked after the app's stylesheet and its `.history-card.is-active` carries
+   equal specificity, so without the id this rule loses the tie on any card
+   that is both active and cited — which is exactly the case it exists for. */
+#history-stack .history-card.is-supplement {
+  border-style: dashed;
   border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.18);
 }
 
 .supplement-chips {

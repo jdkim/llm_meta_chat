@@ -115,6 +115,18 @@
             data: { "chats-form-target": "documentInput",
                     action: "change->chats-form#onDocumentSelected" },
             style: "display: none;" %>
+        <%# Discards what is staged in the box — typed text and any attachment.
+            Left disabled while there is nothing to discard, the same way the
+            send button behaves. The reference chips keep their own ×: they are
+            a separate choice, and keeping them is what brings the preset
+            buttons back so another can be tried. %>
+        <button type="button" class="attach-button reset-button" disabled
+                title="Clear the prompt box"
+                aria-label="Clear the prompt box"
+                data-chats-form-target="reset"
+                data-action="click->chats-form#reset">
+          <i class="bi bi-eraser"></i>
+        </button>
         <%= f.button type: "submit",
             class: "send-button",
             disabled: true,

@@ -1899,3 +1899,15 @@ button.model-grid-locked-link {
   font-weight: 600;
 }
 
+/* Clear-the-box control. Shares .attach-button's shape so the row reads as one
+   set of tools; only the disabled treatment differs, because unlike the attach
+   buttons it is inert most of the time and should not draw the eye. */
+.reset-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.reset-button:not(:disabled):hover {
+  color: #b91c1c;
+}
+

@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 // Connects to data-controller="chats-form"
 export default class extends Controller {
   static targets = [
-    "text", "prompt", "submit",
+    "text", "prompt", "submit", "reset",
     "imageInput", "imagePreview", "imageThumbnail", "attachButton",
     "documentInput", "documentPreview", "documentChip", "attachDocumentButton"
   ]
@@ -42,7 +42,45 @@ export default class extends Controller {
 
   updateSubmitButton() {
     this.submitTarget.disabled = !this.#canSubmit()
+    this.updateResetButton()
     this.updateAttachButton()
+  }
+
+  // Nothing staged means nothing to discard. Disabled rather than hidden: the
+  // send button next to it works the same way, and a `hidden` control here
+  // would be one more thing an author `display:` rule could silently keep on
+  // screen.
+  updateResetButton() {
+    if (!this.hasResetTarget) return
+    this.resetTarget.disabled = !this.#hasStagedContent()
+  }
+
+  // Empty the prompt box — what was typed, and any attachment.
+  //
+  // Deliberately leaves the reference selection alone: chips carry their own
+  // ×, they are a separate choice from the message, and keeping them is what
+  // brings the preset buttons back, since those only show while the box is
+  // empty. Clearing a preset you dislike to try another one is the main reason
+  // this button exists.
+  reset() {
+    if (this.hasPromptTarget) {
+      this.promptTarget.value = ""
+      // Let every controller watching the box re-evaluate — the preset
+      // buttons reappear off this event, not off our own state.
+      this.promptTarget.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+    if (this.hasTextTarget) this.textTarget.value = ""
+    this.clearImage()
+    this.clearDocument()
+    this.updateSubmitButton()
+    this.promptTarget?.focus()
+  }
+
+  #hasStagedContent() {
+    const typed = this.hasPromptTarget && this.promptTarget.value.trim().length > 0
+    const image = this.hasImageInputTarget && !!this.imageInputTarget.value
+    const document = this.hasDocumentInputTarget && !!this.documentInputTarget.value
+    return typed || image || document
   }
 
   // Disable the attach button when the selected model isn't vision-capable.

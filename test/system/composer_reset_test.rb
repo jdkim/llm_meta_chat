@@ -37,6 +37,10 @@ class ComposerResetTest < ApplicationSystemTestCase
   def seed_chat
     visit root_path
     click_button "Sign in with Google"
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
     assert_text "reset@example.com"
     user = User.find_by!(email: "reset@example.com")
 
@@ -51,10 +55,6 @@ class ComposerResetTest < ApplicationSystemTestCase
   end
 
   def reset_button = find(".reset-button", visible: :all)
-
-  def ctrl_click(node)
-    page.driver.browser.action.key_down(:control).click(node.native).key_up(:control).perform
-  end
 
   test "it is inert while the box is empty" do
     visit chat_path(seed_chat.uuid)
@@ -85,7 +85,7 @@ class ComposerResetTest < ApplicationSystemTestCase
   test "clearing an applied preset brings the presets back" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(find(".history-card", text: "question alpha"))
+    ctrl_click { find(".history-card", text: "question alpha") }
     click_button "Fair comparison"
 
     assert_no_selector ".supplement-presets", visible: true
@@ -102,7 +102,7 @@ class ComposerResetTest < ApplicationSystemTestCase
   test "it leaves the reference selection alone" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(find(".history-card", text: "question alpha"))
+    ctrl_click { find(".history-card", text: "question alpha") }
     fill_in "message-input", with: "something"
 
     reset_button.click
@@ -115,5 +115,55 @@ class ComposerResetTest < ApplicationSystemTestCase
     visit root_path
 
     assert_selector ".reset-button", visible: :all
+  end
+
+  # ----- composer layout -----
+
+  def control_boxes
+    page.evaluate_script(<<~JS)
+      [...document.querySelectorAll('.input-wrapper button')].map((e) => {
+        const b = e.getBoundingClientRect()
+        return { name: e.className, left: b.left, right: b.right, top: b.top, bottom: b.bottom }
+      })
+    JS
+  end
+
+  # Every .attach-button used to position itself at the same `right: 56px`, so
+  # each icon sat on top of the last — the image and document buttons already
+  # overlapped, and adding reset made a three-way pile. Markup assertions see
+  # three perfectly good buttons; only geometry sees the problem.
+  test "no two composer controls overlap" do
+    visit chat_path(seed_chat.uuid)
+    fill_in "message-input", with: "draft"
+
+    boxes = control_boxes
+    assert_operator boxes.length, :>=, 3, "expected the icon row plus send"
+
+    boxes.combination(2).each do |a, b|
+      overlap = a["left"] < b["right"] && b["left"] < a["right"] &&
+                a["top"] < b["bottom"] && b["top"] < a["bottom"]
+      assert_not overlap, "#{a["name"]} overlaps #{b["name"]}"
+    end
+  end
+
+  # The textarea reserves its right edge for these controls. Reserve too little
+  # and a full line of text runs underneath them, which is how this looked in
+  # practice before the row existed.
+  test "typed text does not run under the icon row" do
+    visit chat_path(seed_chat.uuid)
+    fill_in "message-input", with: "draft"
+
+    clearance = page.evaluate_script(<<~JS)
+      (() => {
+        const input = document.querySelector('.chat-input')
+        const row = document.querySelector('.input-actions')
+        const reserved = parseFloat(getComputedStyle(input).paddingRight)
+        const needed = input.getBoundingClientRect().right - row.getBoundingClientRect().left
+        return { reserved: reserved, needed: needed }
+      })()
+    JS
+
+    assert_operator clearance["reserved"], :>=, clearance["needed"],
+                    "the input reserves #{clearance["reserved"]}px but the controls need #{clearance["needed"]}px"
   end
 end

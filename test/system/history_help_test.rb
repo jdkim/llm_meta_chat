@@ -38,6 +38,10 @@ class HistoryHelpTest < ApplicationSystemTestCase
   def seed_chat
     visit root_path
     click_button "Sign in with Google"
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
     assert_text "help@example.com"
     user = User.find_by!(email: "help@example.com")
 
@@ -87,7 +91,7 @@ class HistoryHelpTest < ApplicationSystemTestCase
   test "hovering the mark reveals the bubble" do
     visit chat_path(seed_chat.uuid)
 
-    find(".history-help").hover
+    hover_over { find(".history-help") }
 
     assert_bubble "visibility", "visible"
     assert_bubble "opacity", "1"
@@ -95,7 +99,7 @@ class HistoryHelpTest < ApplicationSystemTestCase
 
   test "the bubble names all three gestures" do
     visit chat_path(seed_chat.uuid)
-    find(".history-help").hover
+    hover_over { find(".history-help") }
 
     bubble = find("#history-help-bubble", visible: :all)
     assert_match(/revisit that prompt/, bubble.text(:all))
@@ -118,7 +122,7 @@ class HistoryHelpTest < ApplicationSystemTestCase
   # wider than the pane is cut off rather than overflowing it.
   test "the bubble stays inside the pane" do
     visit chat_path(seed_chat.uuid)
-    find(".history-help").hover
+    hover_over { find(".history-help") }
 
     fits = page.evaluate_script(<<~JS)
       (() => {

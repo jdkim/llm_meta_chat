@@ -35,18 +35,37 @@
             required: true,
             id: "message-input",
             data: { "chats-form-target": "prompt", action: "input->chats-form#updateSubmitButton keydown->chats-form#onPromptKeydown paste->chats-form#onPaste" } %>
-        <button type="button" class="attach-button" disabled
-                title="Attach image"
-                data-chats-form-target="attachButton"
-                data-action="click->chats-form#openAttachmentPicker">
-          <i class="bi bi-paperclip"></i>
-        </button>
-        <button type="button" class="attach-button"
-                title="Attach document (PDF/TXT/MD/CSV/JSON/XML)"
-                data-chats-form-target="attachDocumentButton"
-                data-action="click->chats-form#openDocumentPicker">
-          <i class="bi bi-file-earmark-text"></i>
-        </button>
+        <%# One row rather than three absolutely-positioned buttons at the same
+            offset. Each .attach-button used to place itself at right: 56px, so
+            every icon landed on top of the last — the image and document
+            buttons already overlapped before a third was added. A flex row
+            cannot collide however many buttons it holds. %>
+        <div class="input-actions">
+          <button type="button" class="attach-button" disabled
+                  title="Attach image"
+                  data-chats-form-target="attachButton"
+                  data-action="click->chats-form#openAttachmentPicker">
+            <i class="bi bi-paperclip"></i>
+          </button>
+          <button type="button" class="attach-button"
+                  title="Attach document (PDF/TXT/MD/CSV/JSON/XML)"
+                  data-chats-form-target="attachDocumentButton"
+                  data-action="click->chats-form#openDocumentPicker">
+            <i class="bi bi-file-earmark-text"></i>
+          </button>
+          <%# Discards what is staged in the box — typed text and any attachment.
+              Left disabled while there is nothing to discard, the same way the
+              send button behaves. The reference chips keep their own ×: they are
+              a separate choice, and keeping them is what brings the preset
+              buttons back so another can be tried. %>
+          <button type="button" class="attach-button reset-button" disabled
+                  title="Clear the prompt box"
+                  aria-label="Clear the prompt box"
+                  data-chats-form-target="reset"
+                  data-action="click->chats-form#reset">
+            <i class="bi bi-eraser"></i>
+          </button>
+        </div>
         <%= f.file_field :image, accept: "image/*",
             data: { "chats-form-target": "imageInput",
                     action: "change->chats-form#onImageSelected" },
@@ -55,18 +74,6 @@
             data: { "chats-form-target": "documentInput",
                     action: "change->chats-form#onDocumentSelected" },
             style: "display: none;" %>
-        <%# Discards what is staged in the box — typed text and any attachment.
-            Left disabled while there is nothing to discard, the same way the
-            send button behaves. The reference chips keep their own ×: they are
-            a separate choice, and keeping them is what brings the preset
-            buttons back so another can be tried. %>
-        <button type="button" class="attach-button reset-button" disabled
-                title="Clear the prompt box"
-                aria-label="Clear the prompt box"
-                data-chats-form-target="reset"
-                data-action="click->chats-form#reset">
-          <i class="bi bi-eraser"></i>
-        </button>
         <%= f.button type: "submit",
             class: "send-button",
             disabled: true,

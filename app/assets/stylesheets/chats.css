@@ -300,10 +300,26 @@
   flex: 1;
 }
 
+/* The icon row, parked just left of the send button. Laying the buttons out
+   here means adding a fourth needs no new offsets — and .chat-input's
+   padding-right below must stay wide enough to clear this row, or typed text
+   runs underneath it. */
+.input-actions {
+  position: absolute;
+  right: 56px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .chat-input {
   width: 100%;
   padding: 12px;
-  padding-right: 56px;
+  /* 56px clears the send button; the rest clears .input-actions (three 32px
+     buttons plus gaps). At 56px — what this was — text ran underneath the
+     icons on a full line. */
+  padding-right: 158px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 15px;
@@ -703,10 +719,11 @@
 }
 
 /* Image attachment: paperclip button inside the input + thumbnail preview above it. */
+/* Positioned by .input-actions, not individually. Every .attach-button used to
+   carry `position: absolute; right: 56px`, so each new icon stacked exactly on
+   the previous one — the image and document buttons already overlapped, and a
+   third made it obvious. */
 .attach-button {
-  position: absolute;
-  bottom: 10px;
-  right: 56px; /* sits to the left of the send button */
   width: 32px;
   height: 32px;
   display: flex;

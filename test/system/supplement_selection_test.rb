@@ -58,6 +58,10 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   def sign_in_through_browser
     visit root_path
     click_button "Sign in with Google"
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
+    # Signing in navigates without going through `visit`, so settle here too.
+    wait_for_turbo
     # Wait for the redirect to land before querying: click_button returns as
     # soon as the request is issued, so the User row may not exist yet.
     assert_text "sys@example.com"
@@ -84,10 +88,6 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     find(".history-card", text: prompt_text)
   end
 
-  def ctrl_click(node)
-    page.driver.browser.action.key_down(:control).click(node.native).key_up(:control).perform
-  end
-
   test "the presets stay out of sight until something is cited" do
     chat = seed_chat
     visit chat_path(chat.uuid)
@@ -97,7 +97,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     assert_no_selector ".supplement-presets", visible: true
     assert_no_selector ".supplement-chips", visible: true
 
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     assert_selector ".supplement-presets", visible: true
     assert_selector ".supplement-chip", text: "question alpha", visible: true
@@ -106,8 +106,8 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "ctrl+click marks the card and fills the hidden field" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
-    ctrl_click(card_for("question beta"))
+    ctrl_click { card_for("question alpha") }
+    ctrl_click { card_for("question beta") }
 
     assert_selector ".history-card.is-supplement", count: 2
     cited = chat.ordered_prompt_executions.first(2).map(&:execution_id)
@@ -127,10 +127,10 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "ctrl+clicking a cited card again drops it" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
     assert_selector ".history-card.is-supplement", count: 1
 
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     assert_no_selector ".history-card.is-supplement"
     assert_no_selector ".supplement-presets", visible: true
@@ -139,7 +139,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "the chip's remove control drops the citation" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     find(".supplement-chip-remove").click
 
@@ -150,7 +150,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "a preset fills the box and then withdraws" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     click_button "Fair comparison"
 
@@ -162,7 +162,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     chat = seed_chat
     visit chat_path(chat.uuid)
 
-    ctrl_click(find(".history-card-start"))
+    ctrl_click { find(".history-card-start") }
 
     assert_no_selector ".history-card.is-supplement"
     assert_equal "", find("#supplement_uuids", visible: false).value
@@ -173,7 +173,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "the preview shows the block that would be sent" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     assert_no_selector ".supplement-preview", visible: true
     click_button "show what will be sent"
@@ -201,7 +201,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "a cited card is dashed while the active card stays solid" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     cited  = find(".history-card.is-supplement")
     active = find(".history-card.is-active")
@@ -217,7 +217,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     chat = seed_chat
     visit chat_path(chat.uuid)
     active_text = find(".history-card.is-active .history-card-prompt").text
-    ctrl_click(card_for(active_text))
+    ctrl_click { card_for(active_text) }
 
     both = find(".history-card.is-active.is-supplement")
     move_pointer_away
@@ -232,7 +232,7 @@ class SupplementSelectionTest < ApplicationSystemTestCase
   test "an uninvolved card carries neither highlight" do
     chat = seed_chat
     visit chat_path(chat.uuid)
-    ctrl_click(card_for("question alpha"))
+    ctrl_click { card_for("question alpha") }
 
     plain = find(".history-card", text: "question beta")
 

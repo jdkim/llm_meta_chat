@@ -239,4 +239,39 @@ class SupplementSelectionTest < ApplicationSystemTestCase
     assert_equal "solid", style_of(plain, "borderTopStyle")
     assert_no_selector ".history-card.is-supplement", text: "question beta"
   end
+
+  # ----- shift+click -----
+
+  def shift_click(&finder)
+    retrying_stale do
+      node = finder.call
+      page.driver.browser.action.key_down(:shift).click(node.native).key_up(:shift).perform
+    end
+  end
+
+  # Browser default for shift+click on a link is a new window, and each card is
+  # a link. Nobody wants that in the history pane.
+  test "shift+click opens the node in this tab, not a new window" do
+    chat = seed_chat
+    visit chat_path(chat.uuid)
+    target = chat.ordered_prompt_executions.find { |pe| pe.prompt == "question alpha" }
+    windows_before = page.windows.length
+
+    shift_click { card_for("question alpha").find(".history-card-link") }
+
+    # Both halves matter: suppressing the click alone would also leave the
+    # window count unchanged, but would strand the user where they were.
+    assert_current_path prompt_path(target.execution_id)
+    assert_equal windows_before, page.windows.length, "no new window may open"
+  end
+
+  test "shift+click does not cite the node" do
+    chat = seed_chat
+    visit chat_path(chat.uuid)
+
+    shift_click { card_for("question alpha").find(".history-card-link") }
+    wait_for_turbo
+
+    assert_no_selector ".history-card.is-supplement"
+  end
 end

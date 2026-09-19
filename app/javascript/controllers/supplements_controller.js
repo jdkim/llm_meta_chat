@@ -43,6 +43,25 @@ export default class extends Controller {
   }
 
   handleClick(event) {
+    // Shift+click on a link opens a new window — browser default, and the card
+    // row is an <a>. In the history pane that is never what is wanted, so
+    // treat it as a plain click: go to the node, in this tab. Checked before
+    // the ctrl/cmd branch, and only when neither of those is held, so
+    // ctrl+shift still cites.
+    if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      const link = event.target.closest(".history-card .history-card-link")
+      if (link && this.element.contains(link) && link.href) {
+        event.preventDefault()
+        event.stopPropagation()
+        if (window.Turbo) {
+          window.Turbo.visit(link.href)
+        } else {
+          window.location.href = link.href
+        }
+      }
+      return
+    }
+
     // Plain clicks must keep navigating to the node. Only ctrl/cmd+click
     // selects — and it has to be cancelled explicitly, because the card row is
     // an <a> and the browser would otherwise open it in a new tab.

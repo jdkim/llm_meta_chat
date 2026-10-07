@@ -1,4 +1,5 @@
 class ApplicationController < ActionController::Base
+  before_action :load_public_chats
   # PromptNavigator's labels are process-global, so every request must know
   # them — not just the ones that fetch the catalog. See ModelLabelRegistry.
   before_action :warm_model_labels
@@ -48,5 +49,21 @@ class ApplicationController < ActionController::Base
     families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
     ModelLabelRegistry.register(families)
     families
+  end
+
+  private
+
+  # The Demo chats pane lives in the LAYOUT, so every controller that renders a
+  # page — or replaces the sidebar over Turbo Stream — needs @public_chats.
+  # Keeping this in ChatsController alone made the pane vanish in two places:
+  # on /prompts/:id (PromptsController renders the same layout), and after a
+  # streamed answer, because ChatStreamsController#render_sidebar_update
+  # re-renders chats/_chat_sidebar and the pane came back empty.
+  #
+  # @featured_public_chat is the oldest public chat and drives the landing
+  # hero's call to action on chats#new.
+  def load_public_chats
+    @public_chats = Chat.publicly_viewable.order(created_at: :desc).limit(10).to_a
+    @featured_public_chat = @public_chats.min_by(&:created_at)
   end
 end

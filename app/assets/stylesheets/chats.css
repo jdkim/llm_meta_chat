@@ -2007,3 +2007,45 @@ button.model-grid-locked-link {
   border-color: #4a6fa5;
   color: #fff;
 }
+
+/* The History pane's first section: the chat's own title, so the pane says what
+   it is showing before it shows the note and the tree. Capped at two lines —
+   titles are generated and can run long, and the tree below is what the pane is
+   for. The full title is on hover. */
+/* `.sidebar .pane-chat-title`, not `.pane-chat-title`: application.css nests
+   `h2 { margin: 0 }` inside `.sidebar`, which is specificity (0,1,1) and beat a
+   single class — every declaration here was being struck through. Two classes
+   (0,2,0) win it back without !important. */
+.sidebar .pane-chat-title {
+  /* The gap below separates the title from the note box; 8px read as the two
+     being one block. */
+  margin: 0 0 14px;
+  /* The pane's subject, so it reads as CONTENT: larger and darker than the
+     section label below it. The two used to be the same 14px/600/#374151 that
+     `.sidebar h2` imposes on every heading, which made the chat's name and the
+     word "Prompts" look like peers. */
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #1f2430;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Separates the title+note sections from the prompt tree, and marks "Prompts"
+   as a LABEL rather than a second title: small, spaced capitals, muted. Needs
+   `.sidebar .history-heading` for the type properties — `.sidebar h2` is
+   (0,1,1) and would otherwise win, which is exactly why this heading and the
+   chat title looked identical. */
+.sidebar .history-heading {
+  padding-top: 10px;
+  border-top: 1px solid #e3e6ec;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8b93a3;
+}

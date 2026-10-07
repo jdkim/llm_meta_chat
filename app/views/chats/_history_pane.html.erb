@@ -14,14 +14,26 @@
   non_leaf_ids = history.filter_map(&:previous_id)
 %>
 
+<%# The pane reads as three sections: what this chat is CALLED, what it is
+    ABOUT, and how it UNFOLDED. The note used to sit directly under the
+    "History" heading, so the pane announced one thing and then showed another
+    before any history appeared. %>
+<% if chat&.title.present? %>
+  <h2 class="pane-chat-title" title="<%= chat.title %>"><%= chat.title %></h2>
+<% end %>
+
+<%# The note describes the whole chat, so it belongs with the title rather than
+    beside any one turn. %>
+<%= render "chats/chat_note", chat: chat %>
+
 <%# The pane's three gestures are not discoverable on their own — clicking a
     node, branching from it, and ctrl-clicking to cite one all look the same
     until you try them. A hover/focus bubble is enough; anything louder would
     sit permanently above a list people use constantly. %>
 <h2 class="history-heading">
-  History
+  Prompts
   <span class="history-help" tabindex="0" role="button"
-        aria-label="How to use the history pane" aria-describedby="history-help-bubble">?</span>
+        aria-label="How to use the prompts pane" aria-describedby="history-help-bubble">?</span>
   <span class="history-help-bubble" id="history-help-bubble" role="tooltip">
     <span class="history-help-item">
       <strong>Click</strong> a node to revisit that prompt and its answer.
@@ -37,10 +49,6 @@
     </span>
   </span>
 </h2>
-
-<%# The note describes the whole chat, so it sits above the tree rather than
-    beside any one turn. %>
-<%= render "chats/chat_note", chat: chat %>
 
 <% if chat %>
   <div class="history-stack" id="history-stack" data-controller="history">

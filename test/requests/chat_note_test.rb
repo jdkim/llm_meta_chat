@@ -108,4 +108,39 @@ class ChatNoteTest < ActionDispatch::IntegrationTest
 
     assert_nil note_block(response.body)
   end
+
+  # The pane is three sections in a fixed order: title, note, history. It used to
+  # lead with the "History" heading and then show the note, so it announced one
+  # thing and displayed another before any history appeared.
+  test "the pane shows the title, then the note, then the history" do
+    @chat.update!(public: true, note: "What this demo shows")
+    sign_in @other
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
+      get chat_path(@chat.uuid)
+    end
+
+    body  = response.body
+    title = body.index(%q(class="pane-chat-title"))
+    note  = body.index(%q(class="chat-note"))
+    hist  = body.index(%q(class="history-heading"))
+
+    assert title, "the pane should show the chat's title"
+    assert note,  "the pane should show the note"
+    assert hist,  "the pane should still have its History heading"
+    assert_operator title, :<, note, "the title comes first"
+    assert_operator note,  :<, hist, "the note comes before the history"
+  end
+
+  test "an untitled chat simply omits the title section" do
+    @chat.update!(public: true, title: nil, note: "still has a note")
+    sign_in @other
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
+      get chat_path(@chat.uuid)
+    end
+
+    refute_includes response.body, "pane-chat-title"
+    assert_includes response.body, "still has a note"
+  end
 end

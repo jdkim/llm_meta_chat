@@ -54,7 +54,10 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
 
   test "falls back to the platform label for a model the catalog does not list" do
     chat = build_ollama_turn
-    chat.ordered_prompt_executions.last.update!(model: "some-unlisted-model")
+    # Clear the label captured at creation: changing the model afterwards is a
+    # test-only move, and the stored label would otherwise win and make this
+    # assert nothing. (Production never re-models an existing turn.)
+    chat.ordered_prompt_executions.last.update!(model: "some-unlisted-model", model_label: nil)
 
     with_stub(LlmMetaClient::ServerResource, :available_llm_families, FAMILIES) do
       get chat_path(chat.uuid)
@@ -70,7 +73,7 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
   # per-model configuration anywhere.
   test "labels a model that was never hand-configured" do
     chat = build_ollama_turn
-    chat.ordered_prompt_executions.last.update!(model: "qwen3-8-27b")
+    chat.ordered_prompt_executions.last.update!(model: "qwen3-8-27b", model_label: nil)
     families = [ { llm_type: "ollama", name: "Ollama", api_keys: [ { uuid: "ollama-local",
       available_models: [ { "value" => "qwen3-8-27b", "label" => "Qwen3.8 27B" } ] } ] } ]
 

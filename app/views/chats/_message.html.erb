@@ -4,7 +4,10 @@
       👤 You
     <% else %>
       <% pe = message.prompt_navigator_prompt_execution %>
-      🤖 <%= pe&.llm_platform.present? ? PromptNavigator.label_for(platform: pe.llm_platform, model: pe.model) : 'LLM' %>
+      <%# display_label prefers the label captured when the turn ran, so a model %>
+      <%# the catalog no longer lists still names itself here instead of decaying %>
+      <%# to "Gemini" / "Ollama". Same reason as the History chip. %>
+      🤖 <%= pe&.display_label.presence || 'LLM' %>
     <% end %>
   </div>
   <div class="message-content">

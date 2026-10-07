@@ -113,4 +113,39 @@ class ModelLabelRenderingTest < ActionDispatch::IntegrationTest
 
     assert_equal "Ollama", chip
   end
+
+  # The dialogue pane had the same decay as the History chip: it resolved the
+  # label from the LIVE catalog, so retiring a model relabelled every past turn
+  # that used it down to the bare platform name. Reported from production, where
+  # three of four turns read "Gemini" while the fourth kept its full name.
+  #
+  # Scoped to the bubble's own .message-role, because the History chip in the
+  # same response now renders the right label — a body-wide match would pass on
+  # the chip and prove nothing about the pane that was reported.
+  test "the assistant bubble keeps its captured label after the model leaves the catalog" do
+    chat = build_ollama_turn
+    chat.ordered_prompt_executions.last.update!(model_label: "Qwen3.6 35B")
+    PromptNavigator.config.model_labels.replace({})   # the model is retired
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, []) do
+      get chat_path(chat.uuid)
+    end
+
+    assert_response :success
+    bubble = response.body[/<div class="message-role">\s*(?:<!--.*?-->\s*)*🤖\s*([^<\n]*)/m, 1].to_s.strip
+    assert_equal "Qwen3.6 35B", bubble
+  end
+
+  test "the bubble still falls back to the platform when nothing was captured" do
+    chat = build_ollama_turn
+    chat.ordered_prompt_executions.last.update!(model: "some-unlisted-model", model_label: nil)
+    PromptNavigator.config.model_labels.replace({})
+
+    with_stub(LlmMetaClient::ServerResource, :available_llm_families, FAMILIES) do
+      get chat_path(chat.uuid)
+    end
+
+    bubble = response.body[/<div class="message-role">\s*(?:<!--.*?-->\s*)*🤖\s*([^<\n]*)/m, 1].to_s.strip
+    assert_equal "Ollama", bubble
+  end
 end

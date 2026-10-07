@@ -134,6 +134,11 @@ class Chat < ApplicationRecord
       prompt: prompt_with_attachment,
       llm_uuid: llm_uuid,
       model: model,
+      # Capture what the catalog calls this model NOW. The sidebar used to look
+      # the label up live, so retiring a model silently rewrote every past turn
+      # that used it down to the bare platform name. nil here is fine and means
+      # "no label registered yet" — the row then resolves live, as before.
+      model_label: PromptNavigator.model_label_for(model),
       llm_platform: llm_platform,
       configuration: "",
       previous_id: parent_id
@@ -165,6 +170,7 @@ class Chat < ApplicationRecord
     response_content = send_to_llm(prompt_execution, jwt_token, tool_ids: tool_ids, generation_settings: generation_settings)
     prompt_execution.update!(
       llm_platform: resolve_llm_type(prompt_execution.llm_uuid, jwt_token),
+      model_label: prompt_execution.model_label.presence || PromptNavigator.model_label_for(prompt_execution.model),
       response: response_content
     )
     new_message = messages.create!(
@@ -267,6 +273,7 @@ class Chat < ApplicationRecord
 
     prompt_execution.update!(
       llm_platform: prompt_execution.llm_platform.presence || resolve_llm_type(prompt_execution.llm_uuid, jwt_token),
+      model_label: prompt_execution.model_label.presence || PromptNavigator.model_label_for(prompt_execution.model),
       response: content
     )
     messages.create!(

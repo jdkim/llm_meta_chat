@@ -51,7 +51,7 @@ gem "redcarpet"
 gem "llm_meta_client", "~> 1.8"
 gem "chat_manager", "~> 1.2"
 
-gem "prompt_navigator", "~> 2.5"
+gem "prompt_navigator", "~> 2.6"
 
 group :development, :test do
   # Load environment variables from .env files

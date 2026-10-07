@@ -1,0 +1,84 @@
+# Display names for models that have ANSWERED a turn here, including ones the
+# server no longer offers.
+#
+# WHY THIS FILE EXISTS. The history sidebar used to resolve a turn's label from
+# the live catalog, so the label described what is on offer today rather than
+# what actually answered. Retiring a model silently downgraded every past turn
+# that used it to the bare platform name — 350 of 520 turns on production, with
+# Ollama-hosted ones reading just "Ollama", which is the very case the per-model
+# label was added for. New turns now capture their label when written
+# (Chat#add_user_message); this file is how the turns written BEFORE that are
+# repaired, via `bin/rails model_labels:backfill`.
+#
+# PROVENANCE. Reconstructed from llm_meta_server's git history — every revision
+# of config/llm_models.yml plus the older app/models/llm_model_map.rb hash that
+# preceded it. Where a model was renamed over time, the most recent name wins.
+# It is a point-in-time rescue of labels that are otherwise only in git, not a
+# catalog: nothing reads it at runtime, and it needs no upkeep. Models absent
+# from it keep the platform fallback, which is the honest answer — a label we
+# never recorded should not be invented.
+
+labels:
+  claude-3-5-haiku-20241022: "Claude 3.5 Haiku"
+  claude-3-5-haiku-latest: "Claude 3.5 Haiku"
+  claude-3-5-sonnet-20240620: "Claude 3.5 Sonnet (Legacy)"
+  claude-3-5-sonnet-20241022: "Claude 3.5 Sonnet"
+  claude-3-haiku: "Claude 3 Haiku"
+  claude-3-haiku-20240307: "Claude 3 Haiku"
+  claude-3-opus-20240229: "Claude 3 Opus"
+  claude-3-sonnet-20240229: "Claude 3 Sonnet"
+  claude-fable-5: "Claude Fable 5"
+  claude-fable-5-1: "Claude Fable 5.1"
+  claude-haiku-4-5: "Claude Haiku 4.5"
+  claude-opus-4-0: "Claude Opus 4"
+  claude-opus-4-1: "Claude Opus 4.1"
+  claude-opus-4-1-20250513: "Claude Opus 4.1"
+  claude-opus-4-20250514: "Claude Opus 4"
+  claude-opus-4-7: "Claude Opus 4.7"
+  claude-opus-4-8: "Claude Opus 4.8"
+  claude-opus-5: "Claude Opus 5"
+  claude-sonnet-3-7: "Claude Sonnet 3.7"
+  claude-sonnet-4-0: "Claude Sonnet 4"
+  claude-sonnet-4-20250514: "Claude Sonnet 4"
+  claude-sonnet-4-5: "Claude Sonnet 4.5"
+  claude-sonnet-4-5-20250929: "Claude Sonnet 4.5"
+  claude-sonnet-4-6: "Claude Sonnet 4.6"
+  claude-sonnet-5: "Claude Sonnet 5"
+  gemini-2-0-flash: "Gemini 2.0 Flash"
+  gemini-2-0-flash-lite: "Gemini 2.0 Flash Lite"
+  gemini-2-5-flash: "Gemini 2.5 Flash"
+  gemini-2-5-flash-image: "Gemini 2.5 Flash Image (Nano Banana)"
+  gemini-2-5-flash-lite: "Gemini 2.5 Flash Lite"
+  gemini-2-5-pro: "Gemini 2.5 Pro"
+  gemini-3-1-flash-image: "Gemini 3.1 Flash Image (Nano Banana 2)"
+  gemini-3-1-flash-lite: "Gemini 3.1 Flash-Lite"
+  gemini-3-1-flash-lite-image: "Gemini 3.1 Flash Lite Image (Nano Banana 2 Lite)"
+  gemini-3-1-pro: "Gemini 3.1 Pro"
+  gemini-3-5-flash: "Gemini 3.5 Flash"
+  gemini-3-flash: "Gemini 3 Flash"
+  gemini-3-pro: "Gemini 3 Pro"
+  gemini-3-pro-image: "Gemini 3 Pro Image (Nano Banana Pro)"
+  gemma3-27b: "gemma3:27b"
+  gpt-3-5-turbo: "GPT-3.5 Turbo"
+  gpt-3-5-turbo-16k: "GPT-3.5 Turbo 16K"
+  gpt-4-turbo: "GPT-4 Turbo"
+  gpt-4o: "GPT-4o"
+  gpt-4o-mini: "GPT-4o Mini"
+  gpt-5: "GPT-5"
+  gpt-5-4-mini: "GPT-5.4 Mini"
+  gpt-5-5: "GPT-5.5"
+  gpt-5-5-pro: "GPT-5.5 Pro"
+  gpt-5-6-luna: "GPT 5.6 Luna"
+  gpt-5-6-sol: "GPT 5.6 Sol"
+  gpt-5-6-terra: "GPT 5.6 Terra"
+  gpt-5-mini: "GPT-5 Mini"
+  gpt-image-1: "GPT Image 1"
+  gpt-oss-20b: "gpt-oss:20b"
+  medgemma1-5-4b: "medgemma1.5:4b"
+  qwen3-5-4b: "qwen3.5:4b"
+  qwen3-5-9b: "qwen3.5:9b"
+  qwen3-6-35b: "qwen3.6:35b"
+  qwen3-6-35b-fast: "qwen3.6:35b-fast"
+  qwen3-6-35b-no-think: "qwen3.6:35b (no think)"
+  qwen3-8-27b: "qwen3.8:27b"
+  qwen3-8-27b-fast: "qwen3.8:27b-fast"

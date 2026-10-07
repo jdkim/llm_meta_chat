@@ -6,6 +6,9 @@ Rails.application.configure do
   # Make code changes take effect immediately without server restart.
   config.enable_reloading = true
 
+  config.hosts << "test3.pubannotation.org"
+  config.hosts << "chatbranch.dbcls.jp"
+
   config.assume_ssl = true
 
   # Do not eager load code on boot.

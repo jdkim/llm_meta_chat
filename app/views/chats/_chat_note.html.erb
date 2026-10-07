@@ -1,0 +1,46 @@
+<%
+# The chat's note, rendered at the top of the History pane because that pane
+# stands for the chat as a whole — the dialogue beside it shows only one branch.
+#
+# Anyone who can open the chat can read it, which is what makes it useful as a
+# hint for an audience on a demo chat. Notes on private chats stay private
+# because the chat itself is.
+#
+# Editing is gated on `current_user` owning the chat, matching update_note's own
+# `current_user.chats` scope. An anonymous visitor owns chats by session token
+# but has no current_user, so they would get an editor that could only fail —
+# hence the stricter test here than `read_only_for?`.
+chat     = local_assigns[:chat]
+editable = chat.present? && current_user.present? && chat.user_id == current_user.id
+note     = chat&.note.to_s
+%>
+<% if chat.present? && (note.present? || editable) %>
+  <div class="chat-note" data-controller="chat-note-edit"
+       data-chat-note-edit-update-url-value="<%= editable ? update_note_chat_path(chat.uuid) : "" %>">
+
+    <div class="chat-note-view" data-chat-note-edit-target="view">
+      <p class="chat-note-text<%= " is-empty" if note.blank? %>"
+         data-chat-note-edit-target="display"><%= note.presence || "No note yet." %></p>
+      <% if editable %>
+        <button type="button" class="chat-note-edit-button"
+                data-chat-note-edit-target="editButton"
+                data-action="chat-note-edit#start">
+          <%= note.present? ? "Edit note" : "+ Add a note" %>
+        </button>
+      <% end %>
+    </div>
+
+    <% if editable %>
+      <div class="chat-note-editor" data-chat-note-edit-target="editor" hidden>
+        <textarea class="chat-note-input" rows="4" maxlength="2000"
+                  placeholder="A hint for whoever reads this chat, or a memo about where you left off."
+                  data-chat-note-edit-target="input"
+                  data-action="keydown->chat-note-edit#handleKeydown"></textarea>
+        <div class="chat-note-actions">
+          <button type="button" class="chat-note-save" data-action="chat-note-edit#save">Save</button>
+          <button type="button" class="chat-note-cancel" data-action="chat-note-edit#cancel">Cancel</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

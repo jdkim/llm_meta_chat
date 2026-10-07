@@ -10,12 +10,13 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_020525) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_025247) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "chats", force: :cascade do |t|
     t.timestamptz "created_at"
+    t.text "note"
     t.boolean "public", default: false, null: false
     t.text "session_id"
     t.text "title"

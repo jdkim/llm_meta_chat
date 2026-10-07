@@ -1928,3 +1928,82 @@ button.model-grid-locked-link {
   color: #b91c1c;
 }
 
+
+/* ---------------------------------------------------------------------------
+   Chat note — a free-text annotation about the whole chat, at the top of the
+   History pane. On a demo chat it tells the audience what they are looking at;
+   on your own it is a memo about where you left off.
+
+   Deliberately quiet: the pane is used constantly for navigation, so the note
+   has to be readable without competing with the prompt cards below it.
+   --------------------------------------------------------------------------- */
+.chat-note {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: #f8f9fb;
+  border: 1px solid #e3e6ec;
+  border-left: 3px solid #b9c2d0;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.chat-note-text {
+  margin: 0;
+  color: #3c4250;
+  /* Honour the line breaks someone typed without turning the note into HTML. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-note-text.is-empty {
+  color: #8b93a3;
+  font-style: italic;
+}
+
+.chat-note-edit-button {
+  margin-top: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #5b6473;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.chat-note-edit-button:hover {
+  color: #2f3540;
+}
+
+.chat-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid #c7cdd8;
+  border-radius: 4px;
+  font: inherit;
+  resize: vertical;
+}
+
+.chat-note-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chat-note-save,
+.chat-note-cancel {
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #c7cdd8;
+  background: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.chat-note-save {
+  background: #4a6fa5;
+  border-color: #4a6fa5;
+  color: #fff;
+}

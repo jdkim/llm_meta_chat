@@ -1,4 +1,8 @@
 class ChatsController < ApplicationController
+  # Long enough for a paragraph of context; short enough that the History
+  # pane stays a navigation aid rather than a document.
+  NOTE_LIMIT = 2000
+
   include ChatManager::ChatManageable
   include ChatManager::CsvDownloadable
   include PromptNavigator::HistoryManageable
@@ -168,6 +172,20 @@ class ChatsController < ApplicationController
     uuids = Array(params[:uuids]).reject(&:blank?)
     visible_chats_scope.where(uuid: uuids).destroy_all
     redirect_to root_path
+  end
+
+  # The chat-level note shown at the top of the History pane.
+  #
+  # Owner-gated through `current_user.chats` exactly like update_title, so a
+  # non-owner reading a public demo chat can see the note but never write it.
+  # Unlike a title a note may be cleared, so blank is a deliberate "remove it"
+  # rather than an error.
+  def update_note
+    chat = current_user.chats.find_by!(uuid: params[:id])
+    note = params[:note].to_s.strip.truncate(NOTE_LIMIT)
+    chat.update!(note: note.presence)
+
+    render json: { note: chat.note.to_s }
   end
 
   def update_title

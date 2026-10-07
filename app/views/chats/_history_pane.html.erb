@@ -38,6 +38,10 @@
   </span>
 </h2>
 
+<%# The note describes the whole chat, so it sits above the tree rather than
+    beside any one turn. %>
+<%= render "chats/chat_note", chat: chat %>
+
 <% if chat %>
   <div class="history-stack" id="history-stack" data-controller="history">
     <%# The tree has no record for "before the first prompt", so until this

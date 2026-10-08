@@ -47,6 +47,12 @@ class ApplicationController < ActionController::Base
 
   def fetch_llm_families(jwt_token)
     families = LlmMetaClient::ServerResource.available_llm_families(jwt_token)
+    # "Free" spans providers, so it replaces the gem's ollama family rather
+    # than sitting beside it: a free model is defined by the catalog flag,
+    # not by who hosts it, and listing an Ollama model twice (once as
+    # "Local Ollama", once as Free) would be both duplicated and misleading.
+    free = FreeModelFamily.build
+    families = families.reject { |f| f[:llm_type].to_s == "ollama" } + free if free.any?
     ModelLabelRegistry.register(families)
     families
   end

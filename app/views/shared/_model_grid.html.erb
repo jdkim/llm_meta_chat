@@ -6,13 +6,21 @@
   # Build one column per (family × api_key) tuple. "Free" (Ollama) is
   # always shown first when available; brand-named columns follow.
   brand_names = { "anthropic" => "Claude", "google" => "Gemini", "openai" => "GPT" }
-  ordered_families = [
-    llm_families.find { |f| f[:llm_type] == "ollama" }
-  ] + brand_names.keys.map { |t| llm_families.find { |f| f[:llm_type] == t } }
+  # Curated order first — Free, then the brands — then ANY other family the
+  # server returned, appended rather than discarded. This list used to name
+  # only those four, so a provider added later (Bedrock) disappeared from the
+  # picker for signed-in users while still appearing as a locked card to
+  # signed-out ones — LockedModelFamilies already falls back to the family's
+  # server-provided name, and so does the column title on line ~15. Only this
+  # lookup dropped it.
+  curated_types = [ FreeModelFamily::FREE_TYPE, "ollama" ] + brand_names.keys
+  ordered_families =
+    curated_types.map { |t| llm_families.find { |f| f[:llm_type].to_s == t } } +
+    llm_families.reject { |f| curated_types.include?(f[:llm_type].to_s) }
 
   columns = ordered_families.compact.flat_map do |fam|
     Array(fam[:api_keys]).map do |key|
-      base_title = (fam[:llm_type] == "ollama") ? "Free" : brand_names.fetch(fam[:llm_type], fam[:name].to_s)
+      base_title = FreeModelFamily.free?(fam[:llm_type]) ? "Free" : brand_names.fetch(fam[:llm_type], fam[:name].to_s)
       # Strip the "[Provider] " prefix that the meta-server adds to the
       # description so the column header reads cleanly.
       desc = key[:description].to_s.sub(/\A\[[^\]]*\]\s*/, "")
@@ -34,8 +42,8 @@
     { title: fam[:title], family: fam[:llm_type], models: Array(fam[:models]), locked: true }
   end
 
-  free_column  = columns.find { |c| c[:family] == "ollama" }
-  other_columns = columns.reject { |c| c[:family] == "ollama" } + locked_columns
+  free_column  = columns.find { |c| FreeModelFamily.free?(c[:family]) }
+  other_columns = columns.reject { |c| FreeModelFamily.free?(c[:family]) } + locked_columns
 
   # Free sits in the bottom-left cell — the corner nearest the "Other models"
   # button that opens this panel, so the always-available option is closest to

@@ -28,16 +28,22 @@ Rails.application.configure do
   # qwen3-6-35b-fast until that model was retired (2026-09-05), after which
   # the composer silently had no pre-selected model at all — nothing warns
   # when the default names something the catalog no longer serves.
+  #
+  # gpt-oss-120b since 2026-10-10. The local qwen it replaced serves one
+  # request at a time (Ollama refuses parallel slots for that architecture),
+  # so the default model was also the bottleneck. gpt-oss is hosted, answers
+  # in ~0.3s and takes concurrent callers — but it bills the house key, so
+  # the default now costs money per call where it used to cost GPU time.
   config.default_model = ENV["LLM_DEFAULT_MODEL"] ||
                          Rails.application.credentials.dig(:llm_service, :default_model) ||
-                         "qwen3-8-27b-fast"
+                         "gpt-oss-120b"
 
   # Cheap meta_id used by Chat#summarization_target to condense overflow
   # context. Falls back to the user's selected model if this meta_id isn't
   # in the catalog at request time.
-  # Same model as the default: it is the non-thinking variant of the one
-  # already resident on the local server, so summarising costs no extra load
-  # and no model swap.
+  # Deliberately NOT the default model any more. Summarisation is background
+  # work the user never sees, so it stays on the local Ollama instance: free,
+  # already resident, and no Bedrock charge per overflowing conversation.
   config.summarization_model = ENV["LLM_SUMMARIZATION_MODEL"] ||
                                Rails.application.credentials.dig(:llm_service, :summarization_model) ||
                                "qwen3-8-27b-fast"

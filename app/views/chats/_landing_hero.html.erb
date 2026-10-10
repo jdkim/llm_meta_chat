@@ -7,6 +7,7 @@
   <h1>AIbranch — a place for exploratory conversations</h1>
   <p class="landing-hero-tagline">
     Switch models mid-conversation. Branch off any past turn to try a different direction. Bring your own MCP tools.
+    Or put the assistant inside your own web tool.
   </p>
 
   <div class="landing-hero-examples">
@@ -24,14 +25,27 @@
               close to the actual rendered pixel height so the endpoints
               land at each node's vertical center after the stretch.
               Endpoints (y=12 and y=88) approximate the node centers. %>
+          <%# SOLID, and the History pane's lineage grey. Dashed is NOT free
+              decoration here: prompt_navigator draws supplement ("cited as
+              reference") edges dashed 4 3 in violet, and chats.css gives the
+              cited card a dashed border to echo them. A dashed branch arc
+              would therefore claim the wrong relationship. %>
           <path d="M 22 12 C 2 12, 2 88, 22 88"
-                stroke="#94a3b8" stroke-width="1.2" fill="none"
-                stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/>
-          <polygon points="16 84, 22 88, 16 92" fill="#94a3b8"/>
+                stroke="#555" stroke-width="1.2" fill="none"
+                vector-effect="non-scaling-stroke"/>
+          <polygon points="16 84, 22 88, 16 92" fill="#555"/>
         </svg>
         <div class="lh-branch-stack">
           <div class="lh-node">What is Ollama?</div>
-          <div class="lh-branch-updown">↓</div>
+          <%# An SVG line, not a "↓" glyph. font-weight does nothing to that
+              character — it comes from a fallback symbol font with a single
+              weight — so its thickness could not be matched to the curved
+              arc beside it. Same stroke and width as the arc, so both
+              parent→child marks are literally the same line. %>
+          <svg class="lh-branch-updown" viewBox="0 0 8 14" aria-hidden="true">
+            <path d="M 4 0 V 9" stroke="#555" stroke-width="1.2" fill="none"/>
+            <polygon points="1.5 8.5, 4 13, 6.5 8.5" fill="#555"/>
+          </svg>
           <div class="lh-node lh-node-active">Give an example</div>
           <div class="lh-branch-gap"></div>
           <div class="lh-node lh-node-alt">Compare with vLLM</div>
@@ -69,6 +83,29 @@
       <div class="lh-caption">
         <strong>Bring your own MCP tools</strong>
         <span>Register any MCP server; enable per-chat. Public MCP servers work without a login.</span>
+      </div>
+    </div>
+
+    <%# --- 4. The in-page widget. Different in kind from the other three:
+         they are things you do HERE, this is the assistant running inside
+         someone else's tool. The mock is a host page whose own form has
+         already been filled in by the panel docked in its corner. --- %>
+    <div class="landing-hero-example">
+      <div class="lh-viz lh-viz-embed">
+        <div class="lh-host-bar">pubdictionaries.org</div>
+        <div class="lh-host-field"><span>Dictionaries</span><em>MONDO, UBERON</em></div>
+        <div class="lh-host-field"><span>Text</span><em>Carpal tunnel syndrome…</em></div>
+        <div class="lh-host-panel">
+          <div class="lh-host-ask">annotate this</div>
+          <div class="lh-host-did">✓ form filled</div>
+        </div>
+      </div>
+      <div class="lh-caption">
+        <strong>Put it in your own site</strong>
+        <span>A small script adds this assistant to your own web page. It can read the page, fill in the forms, and use your site's own tools.
+          <%= link_to "See it on PubDictionaries", "https://pubdictionaries.org/text_annotation",
+                      target: "_blank", rel: "noopener", class: "landing-hero-cta-link lh-caption-link" %>
+        </span>
       </div>
     </div>
   </div>

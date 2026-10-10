@@ -1490,11 +1490,13 @@ button.model-grid-locked-link {
   margin: 12px 0 0;
 }
 
-/* Landing-hero example cards — three side-by-side mini-mockups illustrating
-   the platform's core features (branching, model switching, MCP tools). */
+/* Landing-hero example cards — four side-by-side mini-mockups illustrating
+   the platform's core features (branching, model switching, MCP tools, and
+   the in-page widget). */
 .landing-hero-examples {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Four cards: 4-up when there is room, 2x2 when there is not. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   margin: 24px 0;
 }
@@ -1564,10 +1566,15 @@ button.model-grid-locked-link {
 .lh-node-alt    { border-color: #f59e0b; background: #fffbeb; color: #78350f; }
 .lh-branch-updown {
   align-self: center;
-  color: #64748b;
-  font-size: 11px;
-  line-height: 1;
-  padding: 1px 0;
+  /* Both marks are the same parent→child edge, so they must read as the same
+     weight — which is why this is an SVG and not the "↓" character the
+     History pane uses. That glyph resolves to a single-weight fallback font,
+     so font-weight cannot thicken it and it rendered as a hairline beside the
+     1.2px arc. Sized to the viewBox ratio so the arrowhead stays square. */
+  width: 8px;
+  height: 14px;
+  flex: none;
+  display: block;
 }
 .lh-branch-gap {
   /* Vertical whitespace that separates the "current thread" from the
@@ -2049,3 +2056,61 @@ button.model-grid-locked-link {
   text-transform: uppercase;
   color: #8b93a3;
 }
+
+/* --- In-page widget viz — a mock HOST page (not this site) with the
+   assistant docked in its corner, having already filled the page's own
+   fields. The whole point of the card is that the chat is inside someone
+   else's tool, so the mock has to read as a different site. --- */
+.lh-viz-embed { position: relative; gap: 4px; }
+.lh-host-bar {
+  font-size: 10px;
+  color: #64748b;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+.lh-host-field {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  font-size: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+  padding: 3px 5px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.lh-host-field span { color: #94a3b8; flex: none; }
+.lh-host-field em {
+  color: #0f172a;
+  font-style: normal;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lh-host-panel {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 66%;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lh-host-ask {
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  align-self: flex-end;
+}
+.lh-host-did { font-size: 10px; color: #15803d; padding: 0 5px; }
+.lh-caption-link { display: inline-block; margin-top: 4px; }
